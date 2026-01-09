@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Interactive Floor Plan Editor</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0d59f2",
+                        "background-light": "#f5f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .grid-canvas {
+            background-size: 30px 30px;
+            background-image: radial-gradient(circle, #d1d5db 1px, transparent 1px);
+        }
+        .dark .grid-canvas {
+            background-image: radial-gradient(circle, #334155 1px, transparent 1px);
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-[#111318] dark:text-white transition-colors duration-200">
+<!-- Top Navigation Bar -->
+<div class="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
+<div class="flex items-center p-4 justify-between max-w-md mx-auto">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[#111318] dark:text-white">arrow_back</span>
+<h2 class="text-[#111318] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">Grade 4 - Room 102</h2>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-primary text-base font-bold leading-normal tracking-[0.015em]">Save</button>
+</div>
+</div>
+</div>
+<!-- Main Editor Area -->
+<main class="relative h-screen w-full pt-16 pb-48 overflow-hidden bg-background-light dark:bg-background-dark">
+<!-- Interactive Grid Canvas -->
+<div class="grid-canvas absolute inset-0 w-[200%] h-[200%] origin-top-left translate-x-[-25%] translate-y-[-10%] opacity-60"></div>
+<!-- Draggable Elements Container (Simulated Layout) -->
+<div class="relative z-10 p-8 flex flex-col items-center">
+<!-- Whiteboard at front -->
+<div class="w-64 h-4 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-full mb-12 flex items-center justify-center shadow-sm">
+<span class="text-[10px] uppercase tracking-widest text-gray-400 font-bold">Whiteboard</span>
+</div>
+<!-- Teacher Desk -->
+<div class="w-24 h-16 bg-white dark:bg-gray-800 border-2 border-primary rounded-lg mb-12 shadow-md flex flex-col items-center justify-center self-end mr-12">
+<span class="material-symbols-outlined text-primary text-xl">laptop_mac</span>
+<span class="text-[10px] font-bold text-primary mt-1">MS. SMITH</span>
+</div>
+<!-- Student Desk Clusters -->
+<div class="grid grid-cols-2 gap-8">
+<!-- Cluster 1 -->
+<div class="grid grid-cols-2 gap-2">
+<!-- Student Card -->
+<div class="w-20 h-24 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-xl p-2 flex flex-col items-center justify-center shadow-sm">
+<img class="w-10 h-10 rounded-full mb-1 object-cover" data-alt="Portrait of a young student boy" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBD-vmRxcsBIlCqGbGWnWWOXyLPaZkGExqOxybWq2HHLMIxUNkAcFUdLr0hosH2pwzo3-GFHYCi_TgOP-AVG9c2oF8K2NHn_WgrnrDL8PlLB07ugcPW6-a1kE40drDx44z9mi6-sFbJUzZWPypHU05wMfaoyBizyqKV7rJSKEUkbnMTSMmt6FuGgsIVSMLqIOi-h-bpzeuhTRoNJtZ86JBAte6kiYvfuZEKMAWxQqjz-7KyJMnMFT5YJs64ImJiHbu2iVZAAwjaGSs"/>
+<span class="text-[10px] font-bold text-center truncate w-full">Alex J.</span>
+<div class="w-full h-1 bg-blue-400 rounded-full mt-1"></div>
+</div>
+<!-- Student Card -->
+<div class="w-20 h-24 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-xl p-2 flex flex-col items-center justify-center shadow-sm">
+<img class="w-10 h-10 rounded-full mb-1 object-cover" data-alt="Portrait of a young student girl" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAq8smXtjVYLbo48oddEj9rzdy8SybLIuVjJjMDdfT_q08z_RGbe-f8PT3ipDJh1SWMpC202HhqtgGDBquIaeysj-ovnD89EWKKoepUDuW0VDraA5MAtehRruLvcltJrYMKnxtSIqVZFlKlF3BAKpbEcmXVNKNXngBvE1NDyoqMSTxqJ_n-s3ZRmRwa_W0P4b7cUFGvDIIIiXPom0ebcSNuSbV14eXVKeo3hF55024Eoh-blolUKZ7Wqq4pJNwzqKc6N9GkhOEwWC0"/>
+<span class="text-[10px] font-bold text-center truncate w-full">Sarah L.</span>
+<div class="w-full h-1 bg-blue-400 rounded-full mt-1"></div>
+</div>
+<!-- Student Card -->
+<div class="w-20 h-24 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-xl p-2 flex flex-col items-center justify-center shadow-sm">
+<img class="w-10 h-10 rounded-full mb-1 object-cover" data-alt="Portrait of a smiling young boy" src="https://lh3.googleusercontent.com/aida-public/AB6AXuALxpiOIIsARew7X7DCCPfic7CHB9uLyRvw_1PjZMjKcgl9oX0t5HSttxvxmjth9GF1spux7PSAH3ZmeSSKXo3hx2fVJTjjpXhc_NpMSzB8pxT0NybGBGc7cX3Cw1tAq9cI14oYvsiQLM5ibXoiXhhu-kRRz9nlsoIuTcslZW8QZhoucE2UpGcgwkDvRIyJK3mZbH8N5_3gi-KdRCBnEBTiBwnDHh-gi1mssgJNhQm4OSQCK54zTrzXFPgwTw5En9aXyylNbWmMTwM"/>
+<span class="text-[10px] font-bold text-center truncate w-full">Mike T.</span>
+<div class="w-full h-1 bg-blue-400 rounded-full mt-1"></div>
+</div>
+<!-- Empty Desk (Ghost) -->
+<div class="w-20 h-24 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl flex items-center justify-center">
+<span class="material-symbols-outlined text-gray-300 dark:text-gray-600">person_add</span>
+</div>
+</div>
+<!-- Cluster 2 -->
+<div class="grid grid-cols-2 gap-2">
+<div class="w-20 h-24 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-xl p-2 flex flex-col items-center justify-center shadow-sm">
+<img class="w-10 h-10 rounded-full mb-1 object-cover" data-alt="Portrait of a young student girl with glasses" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBcaP-qhXF12OKX8vrRFVT2bP-b47byYH2ebv4HlyLVb_jw43n5Jtw7EtU6VFuHKNX99LmpWh5k7ImZU8HiAV1O3qSe1IgzR5EIXq7RcYnkLYBNPvnsew1o7WuW1YaZ-N_WzIBrOzfBdcjkowfb6QfSk7FW3Vb8-6LpZcXGjQ27xdxNzWOiudC_FadyQ1GbKaXwVaH7fWl_a2Z0OG24UXOswC2zieW0m5R3LO4RdNQKrPrYWlL8HUbp8s7R3jYY4-otDC7J3UWq9ps"/>
+<span class="text-[10px] font-bold text-center truncate w-full">Emma W.</span>
+<div class="w-full h-1 bg-green-400 rounded-full mt-1"></div>
+</div>
+<div class="w-20 h-24 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-xl p-2 flex flex-col items-center justify-center shadow-sm">
+<img class="w-10 h-10 rounded-full mb-1 object-cover" data-alt="Portrait of a young male student" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCo08B6LPg4_OU069vt-vufLsRt9kBcfQcuz8AkyORyrZIezCMk0-gbHMz7FeUwOPJCQ7Q8-cGWMai3oS8pN4W9b3tluuMxaNvNAnnB9ZGnhk9IVxehugZvKg0slmQqLZR9E_tHYG_xefijJhfb7BCiJex_uCetcopgKfcSHAtcC7vvUvnhB-yYSUN_r-2aRZwKNKz__KxKFB7zcAp8buvYrhLn2-R8rpZp_hslyOX006pdrpxUBZfNXNDvpXJULPF4vbeiKbC_blw"/>
+<span class="text-[10px] font-bold text-center truncate w-full">Leo C.</span>
+<div class="w-full h-1 bg-green-400 rounded-full mt-1"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Floating Controls (Zoom / Undo) -->
+<div class="absolute left-4 top-20 flex flex-col gap-2 z-20">
+<button class="w-10 h-10 bg-white dark:bg-gray-800 rounded-lg shadow-lg flex items-center justify-center text-gray-700 dark:text-gray-200">
+<span class="material-symbols-outlined">add</span>
+</button>
+<button class="w-10 h-10 bg-white dark:bg-gray-800 rounded-lg shadow-lg flex items-center justify-center text-gray-700 dark:text-gray-200">
+<span class="material-symbols-outlined">remove</span>
+</button>
+</div>
+<div class="absolute right-4 top-20 flex flex-col gap-2 z-20">
+<button class="w-10 h-10 bg-white dark:bg-gray-800 rounded-lg shadow-lg flex items-center justify-center text-gray-700 dark:text-gray-200">
+<span class="material-symbols-outlined">undo</span>
+</button>
+<button class="w-10 h-10 bg-white dark:bg-gray-800 rounded-lg shadow-lg flex items-center justify-center text-gray-700 dark:text-gray-200 opacity-50">
+<span class="material-symbols-outlined">redo</span>
+</button>
+</div>
+<!-- Right Sidebar (Draggable Student List) - Collapsed handle style for mobile -->
+<div class="absolute right-0 top-1/2 -translate-y-1/2 z-30 flex items-center">
+<div class="w-1 h-12 bg-gray-300 dark:bg-gray-600 rounded-full ml-1"></div>
+<div class="bg-white dark:bg-gray-800 w-16 h-80 rounded-l-2xl shadow-2xl border-y border-l border-gray-200 dark:border-gray-700 py-4 flex flex-col items-center gap-4 overflow-y-auto hide-scrollbar">
+<img class="w-10 h-10 rounded-full border-2 border-primary grayscale" data-alt="Student avatar for drag and drop" src="https://lh3.googleusercontent.com/aida-public/AB6AXuArGx_HSxegj7OpZG_cmrFMVEGeEA24BEFYmhAbj4uAh6M79MKVtjHhGR-s6YB-L9xdYxgJ8E68zeRa3YgBD-MFH5kElpBSqZopI-3aorq7WwcY1NnwSHMecavCYN-0rLYbGSZmeyawvVa5mX9gBnT_XgbKnJafkN_ENe8Z3sCr8-zSSv-F13Clb3TGPO4lSp4ADFXP23f3x2NJb3At4XbBs7dyWc9FypeVVnlI766fOXdKfh-Kc4V3NzHD7UDODrZXXNpnh9ljo8c"/>
+<img class="w-10 h-10 rounded-full border-2 border-transparent" data-alt="Student avatar for drag and drop" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDKjWhCiUDjBqHY0XweGpE-I-8hpkUWTqty3UTb8YDIaZO3IdnGtrVfaxID--9nalZz1hTyG5RC6Mxqb2-TEH-dQvxcnDrwB44aSyNL_wI--l8TEEwiozsuTIu7pCtktKqiS7_LGtJ-jKpuOlyHGrCxIezWvawZwVVriQj_EWXvHQ32e3wqtNKb1vuLDKNNN6KgVgms6EpFfWLGaZPGvqGDfG0Bjj2PZKzP3ZKZzwTVNelDPCDs5Wy6xucdxwrXFpnfuYFK5-_fqfU"/>
+<img class="w-10 h-10 rounded-full border-2 border-transparent" data-alt="Student avatar for drag and drop" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAVFW7y8s_arQRGP4YjiygsZFCcH7kMM5K4QzXNibpAUKVQhhT-YJwn6O9wHoEPfwlWy7jyQpWtd9H6D6z7nDUQcFO_qepTClgD8-nyp5HrFDSXehzbceDzIoy0HOe5A_2cX4lKrWgly4gaR38b6m8RY3gOOxsAmKHYCAzQ_S22Jn6csYJQP2vRXPl98B5EOdEucD2IiPaBZyv1g7p8wbkqkuE9sTiOE8QiykZNEjoIguRuBGUJW2TjtZm9ZO8qt9T2RmVtC28XTZI"/>
+<div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+<span class="material-symbols-outlined text-gray-400 text-sm">more_vert</span>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Toolbox -->
+<div class="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-background-dark border-t border-gray-200 dark:border-gray-800 pb-8 px-4 pt-4 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
+<div class="max-w-md mx-auto">
+<div class="flex items-center justify-between mb-4">
+<h3 class="text-[#111318] dark:text-white text-sm font-bold uppercase tracking-wider">Furniture &amp; Tools</h3>
+<button class="flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-full text-xs font-bold">
+<span class="material-symbols-outlined text-sm">visibility</span>
+                    Preview
+                </button>
+</div>
+<div class="flex gap-4 overflow-x-auto hide-scrollbar pb-2">
+<!-- Single Desk -->
+<div class="flex flex-col items-center gap-2 shrink-0">
+<div class="w-16 h-16 bg-background-light dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl flex items-center justify-center">
+<span class="material-symbols-outlined text-gray-500">table_restaurant</span>
+</div>
+<span class="text-[10px] font-medium">Single</span>
+</div>
+<!-- Double Desk -->
+<div class="flex flex-col items-center gap-2 shrink-0">
+<div class="w-24 h-16 bg-background-light dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl flex items-center justify-center">
+<div class="flex gap-1">
+<span class="material-symbols-outlined text-gray-500">table_restaurant</span>
+<span class="material-symbols-outlined text-gray-500">table_restaurant</span>
+</div>
+</div>
+<span class="text-[10px] font-medium">Double</span>
+</div>
+<!-- Whiteboard -->
+<div class="flex flex-col items-center gap-2 shrink-0">
+<div class="w-16 h-16 bg-background-light dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl flex items-center justify-center">
+<span class="material-symbols-outlined text-gray-500">branding_watermark</span>
+</div>
+<span class="text-[10px] font-medium">Board</span>
+</div>
+<!-- Group Table -->
+<div class="flex flex-col items-center gap-2 shrink-0">
+<div class="w-16 h-16 bg-background-light dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-gray-500">radio_button_unchecked</span>
+</div>
+<span class="text-[10px] font-medium">Round</span>
+</div>
+<!-- Rug/Area -->
+<div class="flex flex-col items-center gap-2 shrink-0">
+<div class="w-16 h-16 bg-background-light dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-gray-500">layers</span>
+</div>
+<span class="text-[10px] font-medium">Area</span>
+</div>
+</div>
+</div>
+</div>
+</body></html>
