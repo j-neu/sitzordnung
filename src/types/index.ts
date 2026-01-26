@@ -22,6 +22,7 @@ export interface Furniture {
   x: number;
   y: number;
   rotation: number; // in degrees
+  isLocked?: boolean;
 }
 
 export type ZonePreference = 'front' | 'back' | null;

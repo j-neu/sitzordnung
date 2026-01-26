@@ -1,8 +1,18 @@
 import { create } from 'zustand';
 import type { Furniture, RoomState, Student, FurnitureType } from '../types';
 import { v4 as uuidv4 } from 'uuid';
+import { getAbsoluteSeatPositions } from '../utils/geometry';
+import SolverWorker from '../workers/solver.worker?worker';
 
 interface StoreState extends RoomState {
+  isOptimizing: boolean;
+  optimizationStats: { cost: number; iteration: number } | null;
+  optimizationReport: { movedCount: number; initialCost: number; finalCost: number; iterations: number } | null;
+
+  // Interaction State for Relationships
+  interactionMode: 'none' | 'green' | 'red' | 'define';
+  relationSelection: { type: 'single'; id: string } | { type: 'pair'; a: string; b: string } | null;
+
   // Actions
   setRoomDimensions: (width: number, height: number) => void;
   setUnit: (unit: 'meters' | 'feet') => void;
@@ -19,15 +29,28 @@ interface StoreState extends RoomState {
   addRelationship: (studentAId: string, studentBId: string, type: 'green' | 'red') => void;
   removeRelationship: (id: string) => void;
   
+  // Interaction Actions
+  setInteractionMode: (mode: 'none' | 'green' | 'red' | 'define') => void;
+  handleRelationClick: (studentId: string) => void;
+  clearRelationSelection: () => void;
+  
   assignStudent: (studentId: string, seatId: string) => void;
   unassignStudent: (studentId: string) => void;
   clearAssignments: () => void;
+  randomFill: () => void;
+  loadState: (newState: RoomState) => void;
+  
+  startOptimization: () => void;
+  stopOptimization: () => void;
+  clearOptimizationReport: () => void;
 }
 
 const DEFAULT_ROOM_WIDTH = 10; // meters
 const DEFAULT_ROOM_HEIGHT = 8; // meters
 
-export const useStore = create<StoreState>((set) => ({
+let worker: Worker | null = null;
+
+export const useStore = create<StoreState>((set, get) => ({
   width: DEFAULT_ROOM_WIDTH,
   height: DEFAULT_ROOM_HEIGHT,
   unit: 'meters',
@@ -35,9 +58,70 @@ export const useStore = create<StoreState>((set) => ({
   students: [],
   relationships: [],
   assignments: {},
+  isOptimizing: false,
+  optimizationStats: null,
+  optimizationReport: null,
+  interactionMode: 'none',
+  relationSelection: null,
 
   setRoomDimensions: (width, height) => set({ width, height }),
   setUnit: (unit) => set({ unit }),
+
+  setInteractionMode: (mode) => set({ interactionMode: mode, relationSelection: null }),
+  
+  clearRelationSelection: () => set({ relationSelection: null }),
+
+  handleRelationClick: (id) => set((state) => {
+    if (state.interactionMode === 'none') return {};
+
+    const selection = state.relationSelection;
+
+    // If nothing selected, select first
+    if (!selection) {
+        return { relationSelection: { type: 'single', id } };
+    }
+
+    // If single selected
+    if (selection.type === 'single') {
+        if (selection.id === id) {
+            // Deselect if same
+            return { relationSelection: null };
+        }
+
+        // Second student clicked
+        const studentAId = selection.id;
+        const studentBId = id;
+
+        // Check exists
+        const exists = state.relationships.some(r => 
+            (r.studentAId === studentAId && r.studentBId === studentBId) ||
+            (r.studentAId === studentBId && r.studentBId === studentAId)
+        );
+
+        if (exists) {
+            // Maybe notify user? For now just clear selection
+            return { relationSelection: null };
+        }
+
+        if (state.interactionMode === 'define') {
+            return { relationSelection: { type: 'pair', a: studentAId, b: studentBId } };
+        } else {
+            // Green or Red - add immediately
+            const newRel = {
+                id: uuidv4(),
+                studentAId,
+                studentBId,
+                type: state.interactionMode as 'green' | 'red'
+            };
+            return {
+                relationships: [...state.relationships, newRel],
+                relationSelection: null
+            };
+        }
+    }
+
+    return {};
+  }),
 
   addFurniture: (type, x, y) => set((state) => ({
     furniture: [
@@ -58,9 +142,10 @@ export const useStore = create<StoreState>((set) => ({
 
   removeFurniture: (id) => set((state) => ({
     furniture: state.furniture.filter((f) => f.id !== id),
-    // Also remove assignments for seats on this furniture? 
-    // Complexity: Seat IDs need to be derived from furniture. 
-    // For now, we'll handle cleanup later or in the component logic.
+    // Cleanup assignments: remove any seat starting with the furniture ID
+    assignments: Object.fromEntries(
+      Object.entries(state.assignments).filter(([seatId]) => !seatId.startsWith(id))
+    )
   })),
 
   addStudent: (name) => set((state) => ({
@@ -96,7 +181,7 @@ export const useStore = create<StoreState>((set) => ({
     relationships: state.relationships.filter(r => r.studentAId !== id && r.studentBId !== id),
     // Remove from assignments
     assignments: Object.fromEntries(
-      Object.entries(state.assignments).filter(([_, sId]) => sId !== id)
+      Object.entries(state.assignments).filter(([, sId]) => sId !== id)
     )
   })),
 
@@ -114,7 +199,7 @@ export const useStore = create<StoreState>((set) => ({
   assignStudent: (studentId, seatId) => set((state) => {
     // Remove student from any previous seat
     const newAssignments = Object.fromEntries(
-      Object.entries(state.assignments).filter(([_, sId]) => sId !== studentId)
+      Object.entries(state.assignments).filter(([, sId]) => sId !== studentId)
     );
     // Assign to new seat
     newAssignments[seatId] = studentId;
@@ -123,9 +208,160 @@ export const useStore = create<StoreState>((set) => ({
 
   unassignStudent: (studentId) => set((state) => ({
     assignments: Object.fromEntries(
-      Object.entries(state.assignments).filter(([_, sId]) => sId !== studentId)
+      Object.entries(state.assignments).filter(([, sId]) => sId !== studentId)
     )
   })),
 
-  clearAssignments: () => set({ assignments: {} })
+  clearAssignments: () => set({ assignments: {} }),
+
+  randomFill: () => set((state) => {
+    // 1. Get unassigned students
+    const assignedStudentIds = new Set(Object.values(state.assignments).filter(Boolean));
+    const unassignedStudents = state.students.filter(s => !assignedStudentIds.has(s.id));
+    
+    if (unassignedStudents.length === 0) return {};
+
+    // 2. Get available seats
+    const occupiedSeats = new Set(Object.keys(state.assignments));
+    const availableSeats: string[] = [];
+    
+    state.furniture.forEach(f => {
+      // Logic matching RoomCanvas for seat IDs
+      if (f.type === 'table-single') {
+        const sid = f.id;
+        if (!occupiedSeats.has(sid)) availableSeats.push(sid);
+      } else if (f.type === 'table-double') {
+        const s1 = f.id + '-L';
+        const s2 = f.id + '-R';
+        if (!occupiedSeats.has(s1)) availableSeats.push(s1);
+        if (!occupiedSeats.has(s2)) availableSeats.push(s2);
+      }
+    });
+
+    if (availableSeats.length === 0) return {};
+
+    // 3. Shuffle
+    const shuffledStudents = [...unassignedStudents].sort(() => Math.random() - 0.5);
+    const newAssignments = { ...state.assignments };
+    
+    // 4. Assign
+    for (const student of shuffledStudents) {
+      if (availableSeats.length === 0) break;
+      const seatIndex = Math.floor(Math.random() * availableSeats.length);
+      const seatId = availableSeats[seatIndex];
+      
+      newAssignments[seatId] = student.id;
+      availableSeats.splice(seatIndex, 1);
+    }
+    
+    return { assignments: newAssignments };
+  }),
+
+  loadState: (newState) => set(() => ({
+    width: newState.width,
+    height: newState.height,
+    unit: newState.unit,
+    furniture: newState.furniture,
+    students: newState.students,
+    relationships: newState.relationships,
+    assignments: newState.assignments
+  })),
+
+  clearOptimizationReport: () => set({ optimizationReport: null }),
+
+  startOptimization: () => {
+    const state = get();
+    if (state.isOptimizing) return;
+
+    // Terminate existing worker if any
+    if (worker) worker.terminate();
+
+    const initialAssignments = { ...state.assignments };
+    let initialCost = 0;
+
+    worker = new SolverWorker();
+    
+    // Calculate Absolute Seat Positions
+    const seats = getAbsoluteSeatPositions(state.furniture);
+    
+    worker.postMessage({
+        type: 'START',
+        payload: {
+            students: state.students,
+            furniture: state.furniture, // Not really used in worker anymore
+            assignments: state.assignments,
+            relationships: state.relationships,
+            width: state.width,
+            height: state.height,
+            seats: seats,
+            roomHeight: state.height,
+            config: {
+                maxIterations: 100000,
+                weights: {
+                    green: 1.0,
+                    red: 50.0,
+                    zone: 50.0
+                }
+            }
+        }
+    });
+
+    set({ isOptimizing: true, optimizationReport: null });
+
+    worker.onmessage = (e) => {
+        const { type, payload } = e.data;
+        if (type === 'PROGRESS') {
+             if (payload.iteration === 0) initialCost = payload.currentCost;
+            set({ 
+                assignments: payload.assignments,
+                optimizationStats: { cost: payload.currentCost, iteration: payload.iteration }
+            });
+        } else if (type === 'DONE') {
+            const finalAssignments = payload.assignments;
+            
+            // Calculate Moved Count
+            let movedCount = 0;
+            const allStudents = state.students;
+            
+            // Create maps: studentId -> seatId
+            const initialMap = new Map<string, string>();
+            Object.entries(initialAssignments).forEach(([seat, student]) => {
+                if (student) initialMap.set(student, seat);
+            });
+            
+            const finalMap = new Map<string, string>();
+            Object.entries(finalAssignments).forEach(([seat, student]) => {
+                 if (student && typeof student === 'string') finalMap.set(student, seat);
+            });
+
+            allStudents.forEach(s => {
+                const startSeat = initialMap.get(s.id);
+                const endSeat = finalMap.get(s.id);
+                if (startSeat !== endSeat) movedCount++;
+            });
+
+            set({ 
+                assignments: finalAssignments,
+                isOptimizing: false,
+                optimizationStats: { cost: payload.currentCost, iteration: payload.iteration },
+                optimizationReport: {
+                    movedCount,
+                    initialCost,
+                    finalCost: payload.currentCost,
+                    iterations: payload.iteration
+                }
+            });
+            worker?.terminate();
+            worker = null;
+        }
+    };
+  },
+
+  stopOptimization: () => {
+    if (worker) {
+        worker.terminate();
+        worker = null;
+    }
+    set({ isOptimizing: false });
+  }
 }));
