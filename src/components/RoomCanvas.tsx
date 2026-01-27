@@ -6,6 +6,7 @@ import ContextMenu from './ContextMenu';
 import { PIXELS_PER_METER, GRID_SIZE_METERS, FURNITURE_DIMENSIONS, SEAT_LAYOUTS } from '../constants';
 import { getAbsoluteSeatPositions } from '../utils/geometry';
 import Konva from 'konva';
+import { TRANSLATIONS } from '../locales';
 
 interface RoomCanvasProps {
   stageRef: RefObject<Konva.Stage | null>;
@@ -15,9 +16,10 @@ export default function RoomCanvas({ stageRef }: RoomCanvasProps) {
   const { 
     width, height, furniture, updateFurniture, 
     assignments, students, assignStudent, unassignStudent, removeFurniture, relationships,
-    interactionMode, handleRelationClick, relationSelection
+    interactionMode, handleRelationClick, relationSelection, language
   } = useStore();
   
+  const t = TRANSLATIONS[language];
   const stageWidth = width * PIXELS_PER_METER;
   const stageHeight = height * PIXELS_PER_METER;
   const PADDING = 60;
@@ -188,7 +190,7 @@ export default function RoomCanvas({ stageRef }: RoomCanvasProps) {
         const student = getStudentForSeat(contextMenu.seatId);
         if (student) {
              options.push({
-                label: `Unassign ${student.name}`,
+                label: `${t.canvas.context.unassign} ${student.name}`,
                 action: () => unassignStudent(student.id)
              });
         }
@@ -196,19 +198,19 @@ export default function RoomCanvas({ stageRef }: RoomCanvasProps) {
 
     // Rotate
     options.push({
-      label: 'Rotate 90°',
+      label: t.canvas.context.rotate,
       action: () => updateFurniture(item.id, { rotation: ((item.rotation || 0) + 90) % 360 })
     });
 
     // Lock/Unlock
     options.push({
-      label: item.isLocked ? 'Unlock Furniture' : 'Lock Furniture',
+      label: item.isLocked ? t.canvas.context.unlock : t.canvas.context.lock,
       action: () => updateFurniture(item.id, { isLocked: !item.isLocked })
     });
 
     // Delete
     options.push({
-      label: 'Delete Furniture',
+      label: t.canvas.context.delete,
       action: () => {
           // Cleanup assignments for this furniture
           // Ideally useStore should handle this, but for now we manually unassign?
@@ -281,6 +283,7 @@ export default function RoomCanvas({ stageRef }: RoomCanvasProps) {
                   handleRelationClick={handleRelationClick}
                   interactionMode={interactionMode}
                   relationSelection={relationSelection}
+                  language={language}
                 />
               ))}
             </Layer>
@@ -290,6 +293,8 @@ export default function RoomCanvas({ stageRef }: RoomCanvasProps) {
     </div>
   );
 }
+
+import type { Language } from '../locales';
 
 interface FurnitureItemProps {
   item: Furniture;
@@ -302,12 +307,14 @@ interface FurnitureItemProps {
   handleRelationClick: (studentId: string) => void;
   interactionMode: 'none' | 'green' | 'red' | 'define';
   relationSelection: { type: 'single'; id: string } | { type: 'pair'; a: string; b: string } | null;
+  language: Language;
 }
 
 function FurnitureItem({ 
     item, assignments, students, roomWidth, roomHeight, updateFurniture, onContextMenu,
-    handleRelationClick, interactionMode, relationSelection 
+    handleRelationClick, interactionMode, relationSelection, language
 }: FurnitureItemProps) {
+  const t = TRANSLATIONS[language];
   const { width, height, color } = FURNITURE_DIMENSIONS[item.type];
   const pixelWidth = width * PIXELS_PER_METER;
   const pixelHeight = height * PIXELS_PER_METER;
@@ -440,35 +447,35 @@ function FurnitureItem({
                     />
 
                     {/* Content */}
-                    <Group x={16} y={16} width={seatPixelW - 32}>
+                    <Group x={8} y={8} width={seatPixelW - 16}>
                          <Text 
-                            text="DESK" 
-                            fontSize={10} 
+                            text={t.canvas.desk} 
+                            fontSize={9} 
                             fontFamily="Inter" 
                             fontStyle="bold"
                             fill={isLocked ? "#EF4444" : "#94A3B8"} 
                          />
                           <Text 
-                            y={20}
-                            text={isLocked ? "Locked" : (student ? student.name : "Open")} 
-                            fontSize={student ? 14 : 12}
+                            y={14}
+                            text={isLocked ? t.canvas.locked : (student ? student.name : t.canvas.open)} 
+                            fontSize={student ? 13 : 11}
                             fontFamily="Inter"
                             fontStyle="bold"
                             fill={student ? "#1E293B" : (isLocked ? "#EF4444" : "#CBD5E1")}
-                            width={seatPixelW - 32}
+                            width={seatPixelW - 16}
                             ellipsis={true}
                             wrap="none"
                           />
                           {student && (
                             <Circle
-                                x={seatPixelW - 32}
-                                y={seatPixelH - 32}
+                                x={seatPixelW - 24}
+                                y={seatPixelH - 24}
                                 radius={4}
                                 fill="#22C55E"
                             />
                           )}
                            {!student && !isLocked && (
-                                <Group y={35}>
+                                <Group y={28}>
                                      <Circle radius={10} fill="#F1F5F9" x={10} y={10} />
                                      <Text text="+" x={4} y={3} fontSize={14} fill="#94A3B8" fontStyle="bold" />
                                 </Group>
@@ -480,7 +487,7 @@ function FurnitureItem({
 
         {!isTable && (
             <Text 
-                text={item.type.replace('-', ' ').toUpperCase()} 
+                text={t.furniture.items[item.type as keyof typeof t.furniture.items]?.toUpperCase() || item.type.toUpperCase()} 
                 width={pixelWidth} 
                 align="center" 
                 y={pixelHeight / 2 - 6} 

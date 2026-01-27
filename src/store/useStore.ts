@@ -3,8 +3,10 @@ import type { Furniture, RoomState, Student, FurnitureType } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { getAbsoluteSeatPositions } from '../utils/geometry';
 import SolverWorker from '../workers/solver.worker?worker';
+import type { Language } from '../locales';
 
 interface StoreState extends RoomState {
+  language: Language;
   isOptimizing: boolean;
   optimizationStats: { cost: number; iteration: number } | null;
   optimizationReport: { movedCount: number; initialCost: number; finalCost: number; iterations: number } | null;
@@ -14,6 +16,7 @@ interface StoreState extends RoomState {
   relationSelection: { type: 'single'; id: string } | { type: 'pair'; a: string; b: string } | null;
 
   // Actions
+  setLanguage: (lang: Language) => void;
   setRoomDimensions: (width: number, height: number) => void;
   setUnit: (unit: 'meters' | 'feet') => void;
   
@@ -39,14 +42,15 @@ interface StoreState extends RoomState {
   clearAssignments: () => void;
   randomFill: () => void;
   loadState: (newState: RoomState) => void;
+  applyLayout: (furniture: Furniture[]) => void;
   
   startOptimization: () => void;
   stopOptimization: () => void;
   clearOptimizationReport: () => void;
 }
 
-const DEFAULT_ROOM_WIDTH = 10; // meters
-const DEFAULT_ROOM_HEIGHT = 8; // meters
+const DEFAULT_ROOM_WIDTH = 8; // meters
+const DEFAULT_ROOM_HEIGHT = 10; // meters
 
 let worker: Worker | null = null;
 
@@ -54,6 +58,7 @@ export const useStore = create<StoreState>((set, get) => ({
   width: DEFAULT_ROOM_WIDTH,
   height: DEFAULT_ROOM_HEIGHT,
   unit: 'meters',
+  language: 'en',
   furniture: [],
   students: [],
   relationships: [],
@@ -64,6 +69,7 @@ export const useStore = create<StoreState>((set, get) => ({
   interactionMode: 'none',
   relationSelection: null,
 
+  setLanguage: (lang) => set({ language: lang }),
   setRoomDimensions: (width, height) => set({ width, height }),
   setUnit: (unit) => set({ unit }),
 
@@ -265,6 +271,11 @@ export const useStore = create<StoreState>((set, get) => ({
     students: newState.students,
     relationships: newState.relationships,
     assignments: newState.assignments
+  })),
+
+  applyLayout: (newFurniture) => set(() => ({
+    furniture: newFurniture,
+    assignments: {} // Clear assignments as furniture IDs change
   })),
 
   clearOptimizationReport: () => set({ optimizationReport: null }),

@@ -1,9 +1,11 @@
-import { Users, Armchair, Settings, Plus, Search, GripVertical, User, Trash2, Edit, Download, Upload, Shuffle, Heart, Ban, Link, Image as ImageIcon } from 'lucide-react';
+import { Users, Armchair, Settings, Plus, Search, GripVertical, User, Trash2, Edit, Download, Upload, Shuffle, Heart, Ban, Link, Image as ImageIcon, Layout } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import clsx from 'clsx';
 import StudentEditModal from './StudentEditModal';
 import type { Student } from '../types';
 import { useRef, useState } from 'react';
+import { TRANSLATIONS } from '../locales';
+import { generateLayout, LAYOUT_TEMPLATES, type LayoutType } from '../utils/layouts';
 
 type Tab = 'furniture' | 'students' | 'optimize' | 'relations';
 
@@ -12,7 +14,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ onExportImage }: SidebarProps) {
-  const [activeTab, setActiveTab] = useState<Tab>('students');
+  const [activeTab, setActiveTab] = useState<Tab>('furniture');
   const [showSaveModal, setShowSaveModal] = useState(false);
   
   const width = useStore(state => state.width);
@@ -22,7 +24,11 @@ export default function Sidebar({ onExportImage }: SidebarProps) {
   const students = useStore(state => state.students);
   const relationships = useStore(state => state.relationships);
   const assignments = useStore(state => state.assignments);
+  const language = useStore(state => state.language);
+  const setLanguage = useStore(state => state.setLanguage);
   
+  const t = TRANSLATIONS[language];
+
   const loadState = useStore(state => state.loadState);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -66,13 +72,13 @@ export default function Sidebar({ onExportImage }: SidebarProps) {
   };
   
   return (
-    <div className="flex flex-col h-full bg-white border-r border-gray-100 shadow-sm z-10 w-96 relative">
+    <div className="flex flex-col h-full bg-white border-r border-gray-100 shadow-sm z-10 w-[480px] relative transition-[width] duration-300">
       {/* Save Modal */}
       {showSaveModal && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
              <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-xs border border-gray-100 ring-1 ring-black/5 animate-in zoom-in-95">
-                 <h3 className="text-lg font-bold text-slate-800 mb-2">Save Layout</h3>
-                 <p className="text-sm text-slate-500 mb-6">Choose what you want to include in this save file.</p>
+                 <h3 className="text-lg font-bold text-slate-800 mb-2">{t.saveModal.title}</h3>
+                 <p className="text-sm text-slate-500 mb-6">{t.saveModal.description}</p>
                  
                  <div className="space-y-3">
                      <button 
@@ -83,8 +89,8 @@ export default function Sidebar({ onExportImage }: SidebarProps) {
                             <Users size={20} />
                         </div>
                         <div>
-                            <div className="font-bold text-slate-700 text-sm">Full Layout</div>
-                            <div className="text-[10px] font-bold text-slate-400 uppercase">Furniture + Students</div>
+                            <div className="font-bold text-slate-700 text-sm">{t.saveModal.fullLayout}</div>
+                            <div className="text-[10px] font-bold text-slate-400 uppercase">{t.saveModal.fullLayoutDesc}</div>
                         </div>
                      </button>
 
@@ -96,8 +102,8 @@ export default function Sidebar({ onExportImage }: SidebarProps) {
                             <Armchair size={20} />
                         </div>
                         <div>
-                            <div className="font-bold text-slate-700 text-sm">Furniture Only</div>
-                            <div className="text-[10px] font-bold text-slate-400 uppercase">Room Template</div>
+                            <div className="font-bold text-slate-700 text-sm">{t.saveModal.furnitureOnly}</div>
+                            <div className="text-[10px] font-bold text-slate-400 uppercase">{t.saveModal.furnitureOnlyDesc}</div>
                         </div>
                      </button>
                  </div>
@@ -106,7 +112,7 @@ export default function Sidebar({ onExportImage }: SidebarProps) {
                     onClick={() => setShowSaveModal(false)}
                     className="w-full mt-6 py-2 text-xs font-bold text-slate-400 hover:text-slate-600"
                  >
-                    Cancel
+                    {t.saveModal.cancel}
                  </button>
              </div>
         </div>
@@ -124,26 +130,44 @@ export default function Sidebar({ onExportImage }: SidebarProps) {
       {/* Header / Tabs */}
       <div className="px-6 pt-6 pb-2">
         <div className="flex justify-between items-center mb-6">
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Classroom Editor</h1>
+            <div className="flex flex-col">
+                <h1 className="text-xl font-bold text-slate-900 tracking-tight">{t.appTitle}</h1>
+                {/* Language Toggle */}
+                <div className="flex gap-2 mt-1">
+                    <button 
+                        onClick={() => setLanguage('de')} 
+                        className={clsx("text-[10px] font-bold transition-colors", language === 'de' ? "text-blue-600" : "text-slate-400 hover:text-slate-600")}
+                    >
+                        DE
+                    </button>
+                    <span className="text-[10px] text-slate-300">|</span>
+                    <button 
+                        onClick={() => setLanguage('en')} 
+                        className={clsx("text-[10px] font-bold transition-colors", language === 'en' ? "text-blue-600" : "text-slate-400 hover:text-slate-600")}
+                    >
+                        EN
+                    </button>
+                </div>
+            </div>
             <div className="flex gap-1">
                 <button 
                     onClick={onExportImage}
                     className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                    title="Export as Image"
+                    title={t.exportImage}
                 >
                     <ImageIcon size={18} />
                 </button>
                 <button 
                     onClick={() => setShowSaveModal(true)}
                     className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                    title="Save Layout"
+                    title={t.saveLayout}
                 >
                     <Download size={18} />
                 </button>
                 <button 
                     onClick={() => fileInputRef.current?.click()}
                     className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                    title="Load Layout"
+                    title={t.loadLayout}
                 >
                     <Upload size={18} />
                 </button>
@@ -152,27 +176,27 @@ export default function Sidebar({ onExportImage }: SidebarProps) {
         
         <div className="flex p-1 bg-slate-100 rounded-xl mb-2">
           <NavButton 
-            active={activeTab === 'students'} 
-            onClick={() => setActiveTab('students')} 
-            label="Students"
-            icon={<Users size={16} />}
-          />
-          <NavButton 
             active={activeTab === 'furniture'} 
             onClick={() => setActiveTab('furniture')} 
-            label="Furniture" 
+            label={t.tabs.furniture} 
             icon={<Armchair size={16} />}
+          />
+          <NavButton 
+            active={activeTab === 'students'} 
+            onClick={() => setActiveTab('students')} 
+            label={t.tabs.students}
+            icon={<Users size={16} />}
           />
           <NavButton 
             active={activeTab === 'relations'} 
             onClick={() => setActiveTab('relations')} 
-            label="Relations" 
+            label={t.tabs.relations} 
             icon={<Link size={16} />}
           />
           <NavButton 
             active={activeTab === 'optimize'} 
             onClick={() => setActiveTab('optimize')} 
-            label="Auto-Fill" 
+            label={t.tabs.optimize} 
             icon={<Settings size={16} />}
           />
         </div>
@@ -216,6 +240,9 @@ function RelationsPanel() {
     const relationSelection = useStore(state => state.relationSelection);
     const handleRelationClick = useStore(state => state.handleRelationClick);
     const clearRelationSelection = useStore(state => state.clearRelationSelection);
+    const language = useStore(state => state.language);
+    
+    const t = TRANSLATIONS[language];
 
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -232,7 +259,7 @@ function RelationsPanel() {
             
             {/* Toolbar */}
             <div className="bg-white p-4 border-b border-gray-100 shadow-sm z-10">
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Relationship Tools</h3>
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">{t.relations.title}</h3>
                 <div className="grid grid-cols-2 gap-2 mb-2">
                     <button
                         onClick={() => setInteractionMode('none')}
@@ -241,7 +268,7 @@ function RelationsPanel() {
                             interactionMode === 'none' ? "bg-slate-800 text-white shadow-md" : "bg-slate-100 text-slate-400 hover:text-slate-600 hover:bg-slate-200"
                         )}
                     >
-                        <Search size={16} /> View
+                        <Search size={16} /> {t.relations.view}
                     </button>
                     <button
                         onClick={() => setInteractionMode('define')}
@@ -250,7 +277,7 @@ function RelationsPanel() {
                             interactionMode === 'define' ? "bg-blue-600 text-white shadow-md ring-2 ring-blue-100" : "bg-slate-100 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
                         )}
                     >
-                        <Link size={16} /> Define
+                        <Link size={16} /> {t.relations.define}
                     </button>
                     <button
                         onClick={() => setInteractionMode('green')}
@@ -259,7 +286,7 @@ function RelationsPanel() {
                             interactionMode === 'green' ? "bg-green-500 text-white shadow-md ring-2 ring-green-100" : "bg-slate-100 text-slate-400 hover:text-green-600 hover:bg-green-50"
                         )}
                     >
-                        <Heart size={16} fill="currentColor" /> Like
+                        <Heart size={16} fill="currentColor" /> {t.relations.like}
                     </button>
                     <button
                         onClick={() => setInteractionMode('red')}
@@ -268,7 +295,7 @@ function RelationsPanel() {
                             interactionMode === 'red' ? "bg-red-500 text-white shadow-md ring-2 ring-red-100" : "bg-slate-100 text-slate-400 hover:text-red-600 hover:bg-red-50"
                         )}
                     >
-                        <Ban size={16} /> Dislike
+                        <Ban size={16} /> {t.relations.dislike}
                     </button>
                 </div>
                 
@@ -279,16 +306,16 @@ function RelationsPanel() {
                         type="text" 
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="Filter students..." 
+                        placeholder={t.relations.searchPlaceholder}
                         className="w-full pl-9 pr-4 py-2 bg-slate-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
                     />
                 </div>
 
                 {/* Instruction Text */}
                 <div className="mt-3 text-[10px] text-slate-400 text-center font-medium h-4">
-                    {interactionMode === 'none' && "Select a tool to start marking relationships."}
-                    {interactionMode !== 'none' && !selectedId && "Tap first student..."}
-                    {interactionMode !== 'none' && selectedId && "Now tap the second student!"}
+                    {interactionMode === 'none' && t.relations.instructions.none}
+                    {interactionMode !== 'none' && !selectedId && t.relations.instructions.selectFirst}
+                    {interactionMode !== 'none' && selectedId && t.relations.instructions.selectSecond}
                 </div>
             </div>
 
@@ -335,7 +362,7 @@ function RelationsPanel() {
                 {/* Existing Relationships List (Mini) */}
                 {relationships.length > 0 && (
                     <div className="mt-8 mb-20">
-                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Existing Links</h3>
+                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t.relations.existingLinks}</h3>
                         <div className="space-y-2">
                             {relationships.map(r => {
                                 const sA = students.find(s => s.id === r.studentAId);
@@ -361,7 +388,7 @@ function RelationsPanel() {
             {pendingPair && (
                 <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
                      <div className="bg-white rounded-2xl shadow-2xl p-5 w-full max-w-xs border border-gray-100 ring-1 ring-black/5 animate-in zoom-in-95">
-                         <h4 className="text-center font-bold text-slate-800 mb-4 text-sm uppercase tracking-wider">Define Relationship</h4>
+                         <h4 className="text-center font-bold text-slate-800 mb-4 text-sm uppercase tracking-wider">{t.relations.popup.title}</h4>
                          <div className="flex gap-3">
                              <button 
                                 onClick={() => {
@@ -371,7 +398,7 @@ function RelationsPanel() {
                                 className="flex-1 flex flex-col items-center gap-2 p-4 bg-green-50 text-green-600 rounded-xl font-bold hover:bg-green-100 hover:scale-105 transition-all shadow-sm border border-green-100"
                              >
                                 <Heart size={28} fill="currentColor" />
-                                <span className="text-xs">Work Well</span>
+                                <span className="text-xs">{t.relations.popup.workWell}</span>
                              </button>
                              <button 
                                 onClick={() => {
@@ -381,14 +408,14 @@ function RelationsPanel() {
                                 className="flex-1 flex flex-col items-center gap-2 p-4 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 hover:scale-105 transition-all shadow-sm border border-red-100"
                              >
                                 <Ban size={28} />
-                                <span className="text-xs">Keep Apart</span>
+                                <span className="text-xs">{t.relations.popup.keepApart}</span>
                              </button>
                          </div>
                          <button 
                             onClick={() => clearRelationSelection()}
                             className="w-full mt-4 py-2 text-xs font-bold text-slate-400 hover:text-slate-600 bg-slate-50 rounded-lg"
                          >
-                            Cancel
+                            {t.relations.popup.cancel}
                          </button>
                      </div>
                 </div>
@@ -404,6 +431,10 @@ function StudentsPanel() {
   const importStudents = useStore(state => state.importStudents);
   const removeStudent = useStore(state => state.removeStudent);
   const relationships = useStore(state => state.relationships);
+  const randomFill = useStore(state => state.randomFill);
+  const language = useStore(state => state.language);
+  
+  const t = TRANSLATIONS[language];
   
   const [newName, setNewName] = useState('');
   const [isImporting, setIsImporting] = useState(false);
@@ -449,7 +480,7 @@ function StudentsPanel() {
               <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
               <input 
                 type="text" 
-                placeholder="Search students..." 
+                placeholder={t.students.searchPlaceholder}
                 className="w-full pl-9 pr-4 py-2 bg-slate-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
               />
             </div>
@@ -459,37 +490,46 @@ function StudentsPanel() {
                 type="text"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                placeholder="Add new student..."
+                placeholder={t.students.addPlaceholder}
                 className="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 transition-all"
               />
               <button type="submit" className="p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20">
                 <Plus size={20} />
               </button>
             </form>
-            <button 
-              onClick={() => setIsImporting(true)}
-              className="w-full text-xs font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50 py-2 rounded-lg transition-colors"
-            >
-              Or import class list...
-            </button>
+            <div className="flex gap-2">
+                <button 
+                  onClick={() => setIsImporting(true)}
+                  className="flex-1 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50 py-2 rounded-lg transition-colors border border-transparent hover:border-blue-100"
+                >
+                  {t.students.importButton}
+                </button>
+                <button 
+                  onClick={randomFill}
+                  className="flex-1 flex items-center justify-center gap-1 text-xs font-bold text-slate-500 hover:text-blue-600 hover:bg-slate-100 py-2 rounded-lg transition-colors border border-transparent hover:border-slate-200"
+                  title="Assign random seats to unseated students"
+                >
+                  <Shuffle size={14} /> {t.students.randomFill}
+                </button>
+            </div>
           </>
         ) : (
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-               <h3 className="text-sm font-bold text-slate-700">Bulk Import</h3>
-               <button onClick={() => setIsImporting(false)} className="text-xs text-slate-400 hover:text-slate-600">Cancel</button>
+               <h3 className="text-sm font-bold text-slate-700">{t.students.importTitle}</h3>
+               <button onClick={() => setIsImporting(false)} className="text-xs text-slate-400 hover:text-slate-600">{t.students.cancel}</button>
             </div>
             <textarea
               value={importText}
               onChange={(e) => setImportText(e.target.value)}
-              placeholder="Paste student names here (one per line)..."
+              placeholder={t.students.importPlaceholder}
               className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 min-h-[100px]"
             />
             <button 
               onClick={handleImport}
               className="w-full py-2 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 shadow-lg shadow-blue-600/20"
             >
-              Import {importText.split('\n').filter(n => n.trim()).length} Students
+              {t.students.importAction}
             </button>
           </div>
         )}
@@ -497,7 +537,7 @@ function StudentsPanel() {
 
       {/* List Header */}
       <div className="px-5 py-3 flex justify-between items-center">
-        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Unassigned Students</h3>
+        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t.students.unassignedTitle}</h3>
         <span className="bg-slate-200 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full">
           {unassignedStudents.length}
         </span>
@@ -522,7 +562,7 @@ function StudentsPanel() {
                 <h4 className="text-sm font-bold text-slate-800 truncate">{student.name}</h4>
                 <div className="flex items-center gap-2">
                   <p className="text-[10px] font-medium text-slate-400 truncate">
-                    {student.zonePreference ? `${student.zonePreference.charAt(0).toUpperCase() + student.zonePreference.slice(1)} Row` : 'No preference'}
+                    {student.zonePreference ? `${student.zonePreference === 'front' ? 'Front' : 'Back'} ${t.students.zoneRow}` : t.students.noPreference}
                   </p>
                   {(greenCount > 0 || redCount > 0) && (
                     <div className="flex gap-1 ml-auto mr-1">
@@ -573,7 +613,7 @@ function StudentsPanel() {
         {unassignedStudents.length === 0 && (
           <div className="text-center py-12 opacity-50">
             <User className="w-12 h-12 mx-auto text-gray-300 mb-2" />
-            <p className="text-sm text-gray-400">All students assigned!</p>
+            <p className="text-sm text-gray-400">{t.students.allAssigned}</p>
           </div>
         )}
       </div>
@@ -588,6 +628,10 @@ function FurniturePanel() {
   const setRoomDimensions = useStore(state => state.setRoomDimensions);
   const setUnit = useStore(state => state.setUnit);
   const addFurniture = useStore(state => state.addFurniture);
+  const applyLayout = useStore(state => state.applyLayout);
+  const language = useStore(state => state.language);
+  
+  const t = TRANSLATIONS[language];
 
   // Constants for conversion
   const FEET_PER_METER = 3.28084;
@@ -600,12 +644,19 @@ function FurniturePanel() {
     else setRoomDimensions(width, meters);
   };
 
+  const handleApplyLayout = (type: LayoutType) => {
+      if (confirm('This will clear all current furniture. Continue?')) {
+          const newFurniture = generateLayout(type, width, height);
+          applyLayout(newFurniture);
+      }
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-slate-50">
       {/* Room Dimensions */}
       <section className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Dimensions</h3>
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t.furniture.dimensions}</h3>
           <div className="flex bg-slate-100 p-0.5 rounded-lg">
             <button
               onClick={() => setUnit('meters')}
@@ -630,7 +681,7 @@ function FurniturePanel() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-[10px] font-bold text-slate-400 mb-1.5">WIDTH</label>
+            <label className="block text-[10px] font-bold text-slate-400 mb-1.5">{t.furniture.width}</label>
             <input
               type="number"
               value={Number(displayWidth.toFixed(1))}
@@ -639,7 +690,7 @@ function FurniturePanel() {
             />
           </div>
           <div>
-            <label className="block text-[10px] font-bold text-slate-400 mb-1.5">HEIGHT</label>
+            <label className="block text-[10px] font-bold text-slate-400 mb-1.5">{t.furniture.height}</label>
             <input
               type="number"
               value={Number(displayHeight.toFixed(1))}
@@ -650,16 +701,33 @@ function FurniturePanel() {
         </div>
       </section>
 
+      {/* Quick Layouts */}
+      <section>
+        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 px-2">{t.furniture.layouts}</h3>
+        <div className="grid grid-cols-2 gap-3 mb-8">
+            {LAYOUT_TEMPLATES.map(type => (
+                <button 
+                    key={type}
+                    onClick={() => handleApplyLayout(type)}
+                    className="flex flex-col items-center justify-center gap-2 p-3 bg-white border border-slate-200 rounded-xl hover:border-blue-400 hover:shadow-md hover:-translate-y-0.5 transition-all group"
+                >
+                    <Layout size={20} className="text-slate-400 group-hover:text-blue-500" />
+                    <span className="text-[10px] font-bold text-slate-600 group-hover:text-blue-600 text-center">{t.furniture.layoutItems[type]}</span>
+                </button>
+            ))}
+        </div>
+      </section>
+
       {/* Furniture Library */}
       <section>
-        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 px-2">Library</h3>
+        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 px-2">{t.furniture.library}</h3>
         <div className="grid grid-cols-2 gap-3">
-          <FurnitureButton onClick={() => addFurniture('table-single', 1, 1)} label="Single Desk" />
-          <FurnitureButton onClick={() => addFurniture('table-double', 1, 1)} label="Double Desk" />
-          <FurnitureButton onClick={() => addFurniture('teacher-desk', 1, 1)} label="Teacher's Desk" />
-          <FurnitureButton onClick={() => addFurniture('whiteboard', 2, 0.1)} label="Whiteboard" />
-          <FurnitureButton onClick={() => addFurniture('door', 0.1, 2)} label="Door" />
-          <FurnitureButton onClick={() => addFurniture('window', 4, 0.1)} label="Window" />
+          <FurnitureButton onClick={() => addFurniture('table-single', 1, 1)} label={t.furniture.items['table-single']} />
+          <FurnitureButton onClick={() => addFurniture('table-double', 1, 1)} label={t.furniture.items['table-double']} />
+          <FurnitureButton onClick={() => addFurniture('teacher-desk', 1, 1)} label={t.furniture.items['teacher-desk']} />
+          <FurnitureButton onClick={() => addFurniture('whiteboard', 2, 0.1)} label={t.furniture.items['whiteboard']} />
+          <FurnitureButton onClick={() => addFurniture('door', 0.1, 2)} label={t.furniture.items['door']} />
+          <FurnitureButton onClick={() => addFurniture('window', 4, 0.1)} label={t.furniture.items['window']} />
         </div>
       </section>
     </div>
@@ -686,6 +754,9 @@ function OptimizePanel() {
   const stats = useStore(state => state.optimizationStats);
   const report = useStore(state => state.optimizationReport);
   const clearReport = useStore(state => state.clearOptimizationReport);
+  const language = useStore(state => state.language);
+  
+  const t = TRANSLATIONS[language];
 
   return (
     <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-slate-50">
@@ -697,14 +768,14 @@ function OptimizePanel() {
       </div>
       
       <h3 className="text-lg font-bold text-slate-800 mb-2">
-          {isOptimizing ? 'Optimizing...' : (report ? 'Optimization Complete' : 'Auto-Arrange')}
+          {isOptimizing ? t.optimize.optimizing : (report ? t.optimize.complete : t.optimize.title)}
       </h3>
       
       {!report && (
         <p className="text-sm text-slate-500 leading-relaxed mb-8">
             {isOptimizing 
-                ? "Finding the best seating arrangement based on your constraints." 
-                : "Use our smart algorithm to automatically seat students based on their preferences and constraints."}
+                ? t.optimize.descriptionOptimizing
+                : t.optimize.description}
         </p>
       )}
 
@@ -712,11 +783,11 @@ function OptimizePanel() {
       {isOptimizing && stats && (
           <div className="w-full mb-6 bg-white p-4 rounded-xl border border-blue-100 shadow-sm text-left">
               <div className="flex justify-between text-xs font-bold text-slate-400 mb-2">
-                  <span>ITERATION</span>
+                  <span>{t.optimize.stats.iteration}</span>
                   <span>{stats.iteration.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-xs font-bold text-slate-400">
-                  <span>COST (LOWER IS BETTER)</span>
+                  <span>{t.optimize.stats.cost}</span>
                   <span className="text-blue-600">{stats.cost.toFixed(1)}</span>
               </div>
           </div>
@@ -727,18 +798,18 @@ function OptimizePanel() {
            <div className="w-full mb-6 bg-white p-5 rounded-2xl border border-green-100 shadow-sm text-left animate-in fade-in zoom-in-95 duration-300">
               <div className="grid grid-cols-2 gap-4 mb-4">
                   <div>
-                      <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">Students Moved</div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">{t.optimize.stats.moved}</div>
                       <div className="text-xl font-bold text-slate-800">{report.movedCount}</div>
                   </div>
                   <div>
-                      <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">Iterations</div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">{t.optimize.stats.iterations}</div>
                       <div className="text-xl font-bold text-slate-800">{report.iterations.toLocaleString()}</div>
                   </div>
               </div>
               
               <div className="pt-4 border-t border-slate-100">
                   <div className="flex justify-between items-end mb-1">
-                      <div className="text-[10px] font-bold text-slate-400 uppercase">Cost Reduction</div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase">{t.optimize.stats.reduction}</div>
                       <div className="text-green-600 font-bold text-sm">
                           {((report.initialCost - report.finalCost)).toFixed(1)}
                       </div>
@@ -764,7 +835,7 @@ function OptimizePanel() {
                     }}
                     className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-600/30 transition-all transform active:scale-95"
                 >
-                    {report ? 'Run Again' : 'Start Smart Optimization'}
+                    {report ? t.optimize.runAgain : t.optimize.start}
                 </button>
                 
                 {!report && (
@@ -773,7 +844,7 @@ function OptimizePanel() {
                         className="w-full py-3 bg-white border border-gray-200 text-slate-700 font-bold rounded-xl shadow-sm hover:border-blue-300 hover:text-blue-600 transition-all flex items-center justify-center gap-2"
                     >
                         <Shuffle size={18} />
-                        Random Fill
+                        {t.students.randomFill}
                     </button>
                 )}
             </>
@@ -784,7 +855,7 @@ function OptimizePanel() {
                 onClick={stopOptimization}
                 className="w-full py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-500/30 transition-all"
             >
-                Stop & Keep Result
+                {t.optimize.stop}
             </button>
         )}
       </div>
