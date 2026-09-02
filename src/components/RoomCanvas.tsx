@@ -5,6 +5,7 @@ import { useState, useMemo, type RefObject, type ReactElement } from 'react';
 import ContextMenu from './ContextMenu';
 import { PIXELS_PER_METER, GRID_SIZE_METERS, FURNITURE_DIMENSIONS, SEAT_LAYOUTS } from '../constants';
 import { getAbsoluteSeatPositions } from '../utils/geometry';
+import { decideSeatClickAction } from '../utils/interaction';
 import Konva from 'konva';
 import { TRANSLATIONS } from '../locales';
 
@@ -13,12 +14,13 @@ interface RoomCanvasProps {
 }
 
 export default function RoomCanvas({ stageRef }: RoomCanvasProps) {
-  const { 
-    width, height, furniture, updateFurniture, 
-    assignments, students, assignStudent, unassignStudent, removeFurniture, relationships,
-    interactionMode, handleRelationClick, relationSelection, language
+  const {
+    width, height, furniture, updateFurniture,
+    assignments, students, unassignStudent, removeFurniture, relationships,
+    interactionMode, handleRelationClick, relationSelection, language,
+    pendingAssignment, setPendingAssignment, assignPendingStudentToSeat
   } = useStore();
-  
+
   const t = TRANSLATIONS[language];
   const stageWidth = width * PIXELS_PER_METER;
   const stageHeight = height * PIXELS_PER_METER;
@@ -95,77 +97,7 @@ export default function RoomCanvas({ stageRef }: RoomCanvasProps) {
     return students.find(s => s.id === studentId);
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const studentId = e.dataTransfer.getData('studentId');
-    if (!studentId) return;
-
-    const stageContainer = document.getElementById('room-stage-container');
-    if (!stageContainer) return;
-    
-    const rect = stageContainer.getBoundingClientRect();
-    const x = e.clientX - rect.left - PADDING;
-    const y = e.clientY - rect.top - PADDING;
-    
-    const roomX = x / PIXELS_PER_METER;
-    const roomY = y / PIXELS_PER_METER;
-    
-    // Find target furniture and seat
-    for (const f of furniture) {
-        if (f.isLocked) continue;
-        if (!f.type.startsWith('table')) continue;
-
-        const dims = FURNITURE_DIMENSIONS[f.type];
-        const isRotated = (f.rotation || 0) % 180 === 90;
-        const effectiveWidth = isRotated ? dims.height : dims.width;
-        const effectiveHeight = isRotated ? dims.width : dims.height;
-
-        // Bounding box check for furniture
-        if (roomX >= f.x && roomX <= f.x + effectiveWidth &&
-            roomY >= f.y && roomY <= f.y + effectiveHeight) {
-            
-            // It's in this furniture. Now find which seat.
-            // Transform point to furniture local space
-            // This is complex due to rotation.
-            // Simplified: If double table, check if closer to start or end?
-            // Correct approach: Inverse rotate the point relative to furniture origin.
-            
-            // Center of furniture
-            const cx = f.x + effectiveWidth / 2;
-            const cy = f.y + effectiveHeight / 2;
-
-            // Translate point to origin
-            const dx = roomX - cx;
-            const dy = roomY - cy;
-
-            // Rotate point backwards
-            const rad = - (f.rotation || 0) * Math.PI / 180;
-            const localX_centered = dx * Math.cos(rad) - dy * Math.sin(rad);
-            const localY_centered = dx * Math.sin(rad) + dy * Math.cos(rad);
-
-            // Translate back to local top-left
-            const localX = localX_centered + dims.width / 2;
-            const localY = localY_centered + dims.height / 2;
-
-            // Check seats
-            const seats = SEAT_LAYOUTS[f.type] || SEAT_LAYOUTS['table-single'];
-            
-            for (const seat of seats!) {
-                if (localX >= seat.x && localX <= seat.x + seat.width &&
-                    localY >= seat.y && localY <= seat.y + seat.height) {
-                    
-                    assignStudent(studentId, f.id + seat.idSuffix);
-                    return;
-                }
-            }
-        }
-    }
-  };
+  const pendingStudent = students.find(s => s.id === pendingAssignment);
 
   const handleContextMenu = (e: Konva.KonvaEventObject<PointerEvent>, furnitureId: string, seatId?: string) => {
     e.evt.preventDefault();
@@ -226,18 +158,23 @@ export default function RoomCanvas({ stageRef }: RoomCanvasProps) {
   };
 
   return (
-    <div 
+    <div
       className="h-full w-full overflow-auto bg-gray-50 custom-scrollbar relative"
-      onDragOver={handleDragOver}
-      onDrop={handleDrop}
       onClick={() => setContextMenu(null)}
     >
       {contextMenu && (
-        <ContextMenu 
-          x={contextMenu.x} 
-          y={contextMenu.y} 
-          options={getContextMenuOptions()} 
-          onClose={() => setContextMenu(null)} 
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          options={getContextMenuOptions()}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
+
+      {pendingStudent && (
+        <PlacementBanner
+          studentName={pendingStudent.name}
+          onCancel={() => setPendingAssignment(null)}
         />
       )}
 
@@ -284,12 +221,31 @@ export default function RoomCanvas({ stageRef }: RoomCanvasProps) {
                   interactionMode={interactionMode}
                   relationSelection={relationSelection}
                   language={language}
+                  pendingAssignment={pendingAssignment}
+                  assignPendingStudentToSeat={assignPendingStudentToSeat}
                 />
               ))}
             </Layer>
           </Stage>
         </div>
       </div>
+    </div>
+  );
+}
+
+export function PlacementBanner({ studentName, onCancel }: { studentName: string; onCancel: () => void }) {
+  return (
+    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 max-w-[90%] bg-slate-900 text-white text-sm font-semibold px-4 py-2 rounded-2xl shadow-lg">
+      <span className="truncate">Placing: {studentName} — tap a seat</span>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onCancel();
+        }}
+        className="shrink-0 text-white/70 hover:text-white font-bold"
+      >
+        Cancel
+      </button>
     </div>
   );
 }
@@ -308,11 +264,14 @@ interface FurnitureItemProps {
   interactionMode: 'none' | 'green' | 'red' | 'define';
   relationSelection: { type: 'single'; id: string } | { type: 'pair'; a: string; b: string } | null;
   language: Language;
+  pendingAssignment: string | null;
+  assignPendingStudentToSeat: (seatId: string) => void;
 }
 
-function FurnitureItem({ 
+function FurnitureItem({
     item, assignments, students, roomWidth, roomHeight, updateFurniture, onContextMenu,
-    handleRelationClick, interactionMode, relationSelection, language
+    handleRelationClick, interactionMode, relationSelection, language,
+    pendingAssignment, assignPendingStudentToSeat
 }: FurnitureItemProps) {
   const t = TRANSLATIONS[language];
   const { width, height, color } = FURNITURE_DIMENSIONS[item.type];
@@ -411,10 +370,24 @@ function FurnitureItem({
             const seatPixelW = layout.width * PIXELS_PER_METER;
             const seatPixelH = layout.height * PIXELS_PER_METER;
 
+            const handleSeatTap = () => {
+                const action = decideSeatClickAction({
+                    interactionMode,
+                    hasStudent: !!student,
+                    hasPendingAssignment: !!pendingAssignment,
+                });
+
+                if (action === 'relation' && student) {
+                    handleRelationClick(student.id);
+                } else if (action === 'assign') {
+                    assignPendingStudentToSeat(seatId);
+                }
+            };
+
             return (
-                <Group 
-                    key={layout.idSuffix} 
-                    x={seatPixelX} 
+                <Group
+                    key={layout.idSuffix}
+                    x={seatPixelX}
                     y={seatPixelY}
                     width={seatPixelW}
                     height={seatPixelH}
@@ -423,16 +396,12 @@ function FurnitureItem({
                         onContextMenu(e, item.id, seatId);
                     }}
                     onClick={(e) => {
-                        if (student) {
-                            e.cancelBubble = true;
-                            handleRelationClick(student.id);
-                        }
+                        e.cancelBubble = true;
+                        handleSeatTap();
                     }}
                     onTap={(e) => { // Mobile support
-                        if (student) {
-                            e.cancelBubble = true;
-                            handleRelationClick(student.id);
-                        }
+                        e.cancelBubble = true;
+                        handleSeatTap();
                     }}
                 >
                     {/* Seat Visual Area */}

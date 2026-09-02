@@ -15,6 +15,9 @@ interface StoreState extends RoomState {
   interactionMode: 'none' | 'green' | 'red' | 'define';
   relationSelection: { type: 'single'; id: string } | { type: 'pair'; a: string; b: string } | null;
 
+  // Interaction State for tap-to-place student assignment (mouse + touch)
+  pendingAssignment: string | null;
+
   // Actions
   setLanguage: (lang: Language) => void;
   setRoomDimensions: (width: number, height: number) => void;
@@ -37,6 +40,9 @@ interface StoreState extends RoomState {
   handleRelationClick: (studentId: string) => void;
   clearRelationSelection: () => void;
   
+  setPendingAssignment: (studentId: string | null) => void;
+  assignPendingStudentToSeat: (seatId: string) => void;
+
   assignStudent: (studentId: string, seatId: string) => void;
   unassignStudent: (studentId: string) => void;
   clearAssignments: () => void;
@@ -68,12 +74,13 @@ export const useStore = create<StoreState>((set, get) => ({
   optimizationReport: null,
   interactionMode: 'none',
   relationSelection: null,
+  pendingAssignment: null,
 
   setLanguage: (lang) => set({ language: lang }),
   setRoomDimensions: (width, height) => set({ width, height }),
   setUnit: (unit) => set({ unit }),
 
-  setInteractionMode: (mode) => set({ interactionMode: mode, relationSelection: null }),
+  setInteractionMode: (mode) => set({ interactionMode: mode, relationSelection: null, pendingAssignment: null }),
   
   clearRelationSelection: () => set({ relationSelection: null }),
 
@@ -201,6 +208,17 @@ export const useStore = create<StoreState>((set, get) => ({
   removeRelationship: (id) => set((state) => ({
     relationships: state.relationships.filter((r) => r.id !== id)
   })),
+
+  setPendingAssignment: (studentId) => set((state) => ({
+    pendingAssignment: state.pendingAssignment === studentId ? null : studentId
+  })),
+
+  assignPendingStudentToSeat: (seatId) => {
+    const { pendingAssignment, assignStudent } = get();
+    if (!pendingAssignment) return;
+    assignStudent(pendingAssignment, seatId);
+    set({ pendingAssignment: null });
+  },
 
   assignStudent: (studentId, seatId) => set((state) => {
     // Remove student from any previous seat

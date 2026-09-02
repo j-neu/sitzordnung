@@ -1,4 +1,4 @@
-import { Users, Armchair, Settings, Plus, Search, GripVertical, User, Trash2, Edit, Download, Upload, Shuffle, Heart, Ban, Link, Image as ImageIcon, Layout } from 'lucide-react';
+import { Users, Armchair, Settings, Plus, Search, User, Trash2, Edit, Download, Upload, Shuffle, Heart, Ban, Link, Image as ImageIcon, Layout } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import clsx from 'clsx';
 import StudentEditModal from './StudentEditModal';
@@ -7,7 +7,7 @@ import { useRef, useState } from 'react';
 import { TRANSLATIONS } from '../locales';
 import { generateLayout, LAYOUT_TEMPLATES, type LayoutType } from '../utils/layouts';
 
-type Tab = 'furniture' | 'students' | 'optimize' | 'relations';
+export type Tab = 'furniture' | 'students' | 'optimize' | 'relations';
 
 interface SidebarProps {
   onExportImage: () => void;
@@ -213,7 +213,7 @@ export default function Sidebar({ onExportImage }: SidebarProps) {
   );
 }
 
-function NavButton({ active, onClick, label, icon }: { active: boolean; onClick: () => void; label: string; icon: React.ReactNode }) {
+export function NavButton({ active, onClick, label, icon }: { active: boolean; onClick: () => void; label: string; icon: React.ReactNode }) {
   return (
     <button
       onClick={onClick}
@@ -228,7 +228,7 @@ function NavButton({ active, onClick, label, icon }: { active: boolean; onClick:
   );
 }
 
-function RelationsPanel() {
+export function RelationsPanel() {
     const students = useStore(state => state.students);
     const relationships = useStore(state => state.relationships);
     const addRelationship = useStore(state => state.addRelationship);
@@ -424,7 +424,7 @@ function RelationsPanel() {
     );
 }
 
-function StudentsPanel() {
+export function StudentsPanel() {
   const students = useStore(state => state.students);
   const assignments = useStore(state => state.assignments);
   const addStudent = useStore(state => state.addStudent);
@@ -433,6 +433,8 @@ function StudentsPanel() {
   const relationships = useStore(state => state.relationships);
   const randomFill = useStore(state => state.randomFill);
   const language = useStore(state => state.language);
+  const pendingAssignment = useStore(state => state.pendingAssignment);
+  const setPendingAssignment = useStore(state => state.setPendingAssignment);
   
   const t = TRANSLATIONS[language];
   
@@ -550,8 +552,21 @@ function StudentsPanel() {
           const greenCount = studentRels.filter(r => r.type === 'green').length;
           const redCount = studentRels.filter(r => r.type === 'red').length;
 
+          const isSelected = pendingAssignment === student.id;
+
           return (
-            <div key={student.id} className="group flex items-center gap-3 p-3 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-blue-200 transition-all cursor-grab active:cursor-grabbing">
+            <div
+              key={student.id}
+              data-testid={`student-row-${student.id}`}
+              aria-pressed={isSelected}
+              onClick={() => setPendingAssignment(student.id)}
+              className={clsx(
+                "group flex items-center gap-3 p-3 bg-white border rounded-2xl shadow-sm transition-all cursor-pointer",
+                isSelected
+                  ? "border-blue-500 ring-2 ring-blue-200 bg-blue-50"
+                  : "border-gray-100 hover:shadow-md hover:border-blue-200"
+              )}
+            >
               {/* Avatar */}
               <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center text-sm font-bold border border-orange-200">
                 {student.name.substring(0, 2).toUpperCase()}
@@ -583,28 +598,24 @@ function StudentsPanel() {
 
               {/* Actions */}
               <div className="flex items-center gap-1 text-gray-300">
-                <button 
-                    onClick={() => setEditingStudent(student)}
+                <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingStudent(student);
+                    }}
                     className="p-1.5 hover:bg-blue-50 hover:text-blue-500 rounded-lg transition-colors"
                   >
                     <Edit size={16} />
                 </button>
-                <button 
-                    onClick={() => removeStudent(student.id)}
+                <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeStudent(student.id);
+                    }}
                     className="p-1.5 hover:bg-red-50 hover:text-red-500 rounded-lg transition-colors"
                   >
                     <Trash2 size={16} />
                 </button>
-                <div 
-                    className="p-1.5 cursor-grab hover:text-slate-400"
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData('studentId', student.id);
-                      e.dataTransfer.effectAllowed = 'copy';
-                    }}
-                >
-                  <GripVertical size={16} />
-                </div>
               </div>
             </div>
           );
@@ -621,7 +632,7 @@ function StudentsPanel() {
   );
 }
 
-function FurniturePanel() {
+export function FurniturePanel() {
   const width = useStore(state => state.width);
   const height = useStore(state => state.height);
   const unit = useStore(state => state.unit);
@@ -746,7 +757,7 @@ function FurnitureButton({ onClick, label }: { onClick: () => void; label: strin
   );
 }
 
-function OptimizePanel() {
+export function OptimizePanel() {
   const randomFill = useStore(state => state.randomFill);
   const startOptimization = useStore(state => state.startOptimization);
   const stopOptimization = useStore(state => state.stopOptimization);
