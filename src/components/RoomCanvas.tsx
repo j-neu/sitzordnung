@@ -1,11 +1,13 @@
 import { Stage, Layer, Rect, Text, Group, Circle, Line } from 'react-konva';
 import { useStore } from '../store/useStore';
 import type { Furniture, Student } from '../types';
-import { useState, useMemo, type RefObject, type ReactElement } from 'react';
+import { useState, useMemo, useRef, useEffect, type RefObject, type ReactElement } from 'react';
+import { Plus, Minus } from 'lucide-react';
 import ContextMenu from './ContextMenu';
-import { PIXELS_PER_METER, GRID_SIZE_METERS, FURNITURE_DIMENSIONS, SEAT_LAYOUTS } from '../constants';
+import { PIXELS_PER_METER, GRID_SIZE_METERS, FURNITURE_DIMENSIONS, SEAT_LAYOUTS, MIN_ZOOM, MAX_ZOOM } from '../constants';
 import { getAbsoluteSeatPositions } from '../utils/geometry';
 import { decideSeatClickAction } from '../utils/interaction';
+import { computeFitScale, computeZoomTransform, type CameraTransform } from '../utils/camera';
 import Konva from 'konva';
 import { TRANSLATIONS } from '../locales';
 
@@ -27,6 +29,112 @@ export default function RoomCanvas({ stageRef }: RoomCanvasProps) {
   const PADDING = 60;
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; furnitureId: string; seatId?: string } | null>(null);
+
+  // --- Pan/zoom camera ---
+  // The Stage is sized to fill its container (not the room's content size);
+  // stage.scale()/stage.position() act as a camera over the room, mutated
+  // imperatively (same pattern as FurnitureItem's onDragEnd) so gestures
+  // don't churn React state.
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const hasFitRef = useRef(false);
+  const lastFittedRoomSizeRef = useRef({ w: width, h: height });
+  const pinchRef = useRef<{ dist: number; center: { x: number; y: number } } | null>(null);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const { width: w, height: h } = entry.contentRect;
+      setContainerSize({ width: w, height: h });
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (containerSize.width === 0 || containerSize.height === 0) return;
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const roomChanged = lastFittedRoomSizeRef.current.w !== width || lastFittedRoomSizeRef.current.h !== height;
+    if (hasFitRef.current && !roomChanged) return;
+
+    const contentSize = { width: stageWidth + PADDING * 2, height: stageHeight + PADDING * 2 };
+    const fit = computeFitScale(containerSize, contentSize);
+    stage.scale({ x: fit.scale, y: fit.scale });
+    stage.position({ x: fit.x, y: fit.y });
+    stage.batchDraw();
+
+    hasFitRef.current = true;
+    lastFittedRoomSizeRef.current = { w: width, h: height };
+  }, [containerSize, width, height, stageWidth, stageHeight, stageRef]);
+
+  const applyZoom = (pointer: { x: number; y: number }, scaleBy: number) => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const current: CameraTransform = { scale: stage.scaleX(), x: stage.x(), y: stage.y() };
+    const next = computeZoomTransform(current, pointer, scaleBy, { min: MIN_ZOOM, max: MAX_ZOOM });
+    stage.scale({ x: next.scale, y: next.scale });
+    stage.position({ x: next.x, y: next.y });
+    stage.batchDraw();
+  };
+
+  const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
+    e.evt.preventDefault();
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    if (e.evt.ctrlKey || e.evt.metaKey) {
+      const pointer = stage.getPointerPosition();
+      if (!pointer) return;
+      const scaleBy = Math.exp(-e.evt.deltaY * 0.01);
+      applyZoom(pointer, scaleBy);
+    } else {
+      stage.position({ x: stage.x() - e.evt.deltaX, y: stage.y() - e.evt.deltaY });
+      stage.batchDraw();
+    }
+  };
+
+  const handleTouchMove = (e: Konva.KonvaEventObject<TouchEvent>) => {
+    const touches = e.evt.touches;
+    if (touches.length !== 2) return;
+    e.evt.preventDefault();
+
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const box = stage.container().getBoundingClientRect();
+    const t0 = touches[0];
+    const t1 = touches[1];
+    const dist = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
+    const center = {
+      x: (t0.clientX + t1.clientX) / 2 - box.left,
+      y: (t0.clientY + t1.clientY) / 2 - box.top,
+    };
+
+    if (pinchRef.current) {
+      const scaleBy = dist / pinchRef.current.dist;
+      applyZoom(center, scaleBy);
+    }
+
+    pinchRef.current = { dist, center };
+  };
+
+  const handleTouchEnd = (e: Konva.KonvaEventObject<TouchEvent>) => {
+    if (e.evt.touches.length < 2) {
+      pinchRef.current = null;
+    }
+  };
+
+  const zoomAtCenter = (scaleBy: number) => {
+    if (containerSize.width === 0 || containerSize.height === 0) return;
+    applyZoom({ x: containerSize.width / 2, y: containerSize.height / 2 }, scaleBy);
+  };
 
   // Calculate seat positions for lines
   const seatPositions = useMemo(() => {
@@ -159,7 +267,7 @@ export default function RoomCanvas({ stageRef }: RoomCanvasProps) {
 
   return (
     <div
-      className="h-full w-full overflow-auto bg-gray-50 custom-scrollbar relative"
+      className="h-full w-full overflow-hidden bg-gray-50 relative"
       onClick={() => setContextMenu(null)}
     >
       {contextMenu && (
@@ -178,14 +286,35 @@ export default function RoomCanvas({ stageRef }: RoomCanvasProps) {
         />
       )}
 
-      <div className="min-w-fit min-h-fit p-16 flex justify-center items-center">
-        <div 
-            id="room-stage-container"
-            className="bg-white/50 rounded-3xl overflow-hidden backdrop-blur-sm border border-white/20 shadow-xl"
+      {/* Zoom Controls */}
+      <div className="absolute left-4 top-4 flex flex-col gap-2 z-20">
+        <button
+          onClick={(e) => { e.stopPropagation(); zoomAtCenter(1.2); }}
+          className="w-10 h-10 bg-white rounded-lg shadow-lg flex items-center justify-center text-gray-700 hover:bg-gray-50"
         >
-          <Stage ref={stageRef} width={stageWidth + PADDING * 2} height={stageHeight + PADDING * 2}>
+          <Plus size={18} />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); zoomAtCenter(1 / 1.2); }}
+          className="w-10 h-10 bg-white rounded-lg shadow-lg flex items-center justify-center text-gray-700 hover:bg-gray-50"
+        >
+          <Minus size={18} />
+        </button>
+      </div>
+
+      <div ref={containerRef} className="absolute inset-0 p-4">
+        {containerSize.width > 0 && containerSize.height > 0 && (
+          <Stage
+            ref={stageRef}
+            width={containerSize.width}
+            height={containerSize.height}
+            draggable
+            onWheel={handleWheel}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
             <Layer x={PADDING} y={PADDING}>
-              
+
               <Rect 
                 width={stageWidth} 
                 height={stageHeight} 
@@ -227,7 +356,7 @@ export default function RoomCanvas({ stageRef }: RoomCanvasProps) {
               ))}
             </Layer>
           </Stage>
-        </div>
+        )}
       </div>
     </div>
   );

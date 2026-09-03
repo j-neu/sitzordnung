@@ -41,7 +41,7 @@ const Layout = () => {
   if (isMobile) {
     return (
       <div className="flex flex-col h-full">
-        <MobileTopBar title="Classroom Plan" onSave={handleSaveLayout} />
+        <MobileTopBar onSave={handleSaveLayout} />
         <div className="flex-1 relative overflow-hidden bg-gray-50">
           <RoomCanvas stageRef={stageRef} />
         </div>

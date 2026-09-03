@@ -97,3 +97,29 @@
   - Test: collapse/expand behavior + auto-collapse on pending assignment.
 - [x] Update `Layout.tsx` to branch on `useIsMobile()`.
   - Test: mobile vs desktop branch renders the correct shell.
+
+## Phase 10: Canvas Pan/Zoom Camera + Mobile Language Switcher
+
+### Camera math
+- [x] Add `computeFitScale` and `computeZoomTransform` to new `src/utils/camera.ts`; add `MIN_ZOOM`/`MAX_ZOOM` to `constants.ts`.
+  - Test: width-constrained / height-constrained / never-upscale-past-1 fit cases; zoom-toward-pointer keeps that point fixed; clamped to MIN/MAX_ZOOM.
+
+### Canvas camera wiring
+- [x] `containerRef` + `ResizeObserver`-driven `containerSize`; size `<Stage>` to it instead of room content size.
+  - Test: manual (Konva/DOM, not jsdom-testable) — verified via Playwright: room fills the container on both viewport sizes.
+- [x] Run `computeFitScale` on mount and on room width/height change.
+  - Test: manual — room loads fully visible and centered on phone and desktop viewports (screenshots confirmed).
+- [x] `<Stage draggable>` for empty-space pan (mouse + touch).
+  - Test: manual — one-finger touch pan and furniture drag both confirmed working end-to-end via Playwright.
+- [x] `onWheel` (ctrl/cmd = zoom, plain = pan) + `onTouchMove`/`onTouchEnd` pinch-zoom via `computeZoomTransform`.
+  - Test: manual — desktop wheel-pan and ctrl+wheel-zoom confirmed (scale clamped to MAX_ZOOM); mobile two-finger pinch confirmed via synthetic touch events.
+- [x] Floating +/− zoom buttons.
+  - Test: manual — button click confirmed changing Konva stage scale on mobile.
+- [x] Remove old `overflow-auto`/`min-w-fit`/`p-16` scrolling wrapper.
+  - Test: `npm run build` clean; no regressions in manual checks above.
+
+### Mobile language switcher
+- [x] `MobileTopBar`: drop `title` prop, read `language`/`setLanguage` from store, render `t.appTitle`, add DE|EN toggle.
+  - Test: renders `t.appTitle`; clicking DE/EN calls `setLanguage` and switches displayed title.
+- [x] Update `Layout.tsx` mobile branch to drop the removed `title` prop.
+  - Test: covered by `Layout.test.tsx` + `MobileTopBar` test above.

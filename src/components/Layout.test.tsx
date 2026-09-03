@@ -34,8 +34,9 @@ describe('Layout responsive branching', () => {
 
     render(<Layout />);
 
-    expect(screen.getByText('Classroom Plan')).toBeInTheDocument(); // MobileTopBar title
+    expect(screen.getByText('Seating-Chart Generator')).toBeInTheDocument(); // MobileTopBar title
     expect(screen.getByText('Save')).toBeInTheDocument(); // MobileTopBar save button
+    expect(screen.getByText('Students')).toBeInTheDocument(); // MobileToolboxSheet tab bar
     expect(screen.getByTestId('room-canvas-mock')).toBeInTheDocument();
     // Desktop-only Sidebar chrome (export image button) should be absent.
     expect(screen.queryByTitle('Export as Image')).not.toBeInTheDocument();
@@ -47,7 +48,7 @@ describe('Layout responsive branching', () => {
 
     render(<Layout />);
 
-    expect(screen.queryByText('Classroom Plan')).not.toBeInTheDocument();
+    expect(screen.queryByText('Save')).not.toBeInTheDocument();
     expect(screen.getByTestId('room-canvas-mock')).toBeInTheDocument();
     // Desktop Sidebar renders the app title and export button.
     expect(screen.getByText('Seating-Chart Generator')).toBeInTheDocument();

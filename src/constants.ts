@@ -2,6 +2,8 @@ import type { FurnitureType } from './types';
 
 export const PIXELS_PER_METER = 100;
 export const GRID_SIZE_METERS = 0.5;
+export const MIN_ZOOM = 0.15;
+export const MAX_ZOOM = 4;
 
 export const FURNITURE_DIMENSIONS: Record<FurnitureType, { width: number; height: number; color: string }> = {
   'table-single': { width: 1.0, height: 0.8, color: '#FFFFFF' }, 
