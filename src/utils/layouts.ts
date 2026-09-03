@@ -156,54 +156,54 @@ export function generateLayout(type: LayoutType, roomWidth: number, roomHeight: 
     // Visual dimensions for vertical tables
     const vW = h; // 0.8
     const vH = w; // 1.8
-    
-    // Bottom Y position (visual top)
-    const bottomY = roomHeight - PADDING - h;
-    
-    // Top Start Y (leave space for whiteboard)
-    const topY = PADDING + 1.5; 
-    
+
+    // Fixed spacing between tables. Unlike a gap computed from available
+    // room space, this never shrinks toward zero, so tables can never touch
+    // or overlap - not each other, and not the bottom row, because the
+    // bottom row's Y position is *derived* from where the side columns
+    // actually end (see bottomY below) rather than computed independently
+    // from the room's height. The two can then never collide, regardless
+    // of room size.
+    const GAP = 0.15;
+
     // Fixed counts so the U always totals 12 double-tables = 24 seats
     // (4 per side + 4 along the bottom), regardless of room size.
-    const sideAvailableH = bottomY - topY;
     const sideCount = 4;
-
-    // Spacing optimization (falls back to a small minimum gap - tables may
-    // pack tightly/overlap in a small room rather than the count dropping).
-    const sideGapY = sideCount > 1 ? (sideAvailableH - sideCount * vH) / (sideCount - 1) : 0.1;
-    // Cap gap, but never let it collapse to zero/negative.
-    const finalSideGapY = Math.max(0.05, Math.min(sideGapY, 0.5));
-    // Re-center vertically if extra space
-    const actualSideH = sideCount * vH + (sideCount - 1) * finalSideGapY;
-    const sideStartActualY = topY + (sideAvailableH - actualSideH) / 2;
-
-    // Place Left Side (Rot 90)
-    for (let i = 0; i < sideCount; i++) {
-        const y = sideStartActualY + i * (vH + finalSideGapY);
-        addVisual('table-double', PADDING, y, 90);
-    }
-    
-    // Place Right Side (Rot -90)
-    for (let i = 0; i < sideCount; i++) {
-        const y = sideStartActualY + i * (vH + finalSideGapY);
-        addVisual('table-double', roomWidth - PADDING - vW, y, -90);
-    }
-    
-    // Place Bottom Row
-    const bottomAvailableW = (roomWidth - PADDING - vW) - (PADDING + vW); // Width between columns
-    // Start X for bottom row
-    const bottomStartX = PADDING + vW;
-    
     const bottomCount = 4;
 
-    const bottomGapX = bottomCount > 1 ? (bottomAvailableW - bottomCount * w) / (bottomCount - 1) : 0.1;
-    const finalBottomGapX = Math.max(0.05, Math.min(bottomGapX, 0.5));
-    
-    const actualBottomW = bottomCount * w + (bottomCount - 1) * finalBottomGapX;
-    const bottomStartActualX = bottomStartX + (bottomAvailableW - actualBottomW) / 2;
-    
+    // Top Start Y (leave space for whiteboard)
+    const topY = PADDING + 0.8;
+    const actualSideH = sideCount * vH + (sideCount - 1) * GAP;
+
+    // Place Left Side (Rot 90)
+    const leftColX = PADDING;
+    for (let i = 0; i < sideCount; i++) {
+        const y = topY + i * (vH + GAP);
+        addVisual('table-double', leftColX, y, 90);
+    }
+
+    // Place Right Side (Rot -90). Derived from the left column's actual
+    // right edge (+ a gap) rather than independently from room width, so in
+    // an extremely narrow room the two columns push apart instead of
+    // crossing over each other.
+    const rightColX = Math.max(roomWidth - PADDING - vW, leftColX + vW + GAP);
+    for (let i = 0; i < sideCount; i++) {
+        const y = topY + i * (vH + GAP);
+        addVisual('table-double', rightColX, y, -90);
+    }
+
+    // Bottom Row - starts strictly after the side columns end (+ one more
+    // gap), so it can never overlap them vertically no matter how tall the
+    // side columns ended up being for a given room.
+    const bottomY = topY + actualSideH + GAP;
+    const bottomAvailableW = rightColX - (leftColX + vW); // Width between columns
+    const bottomStartX = leftColX + vW;
+
+    const actualBottomW = bottomCount * w + (bottomCount - 1) * GAP;
+    const bottomStartActualX = bottomStartX + Math.max(0, (bottomAvailableW - actualBottomW) / 2);
+
     for (let i = 0; i < bottomCount; i++) {
-        const x = bottomStartActualX + i * (w + finalBottomGapX);
+        const x = bottomStartActualX + i * (w + GAP);
         addVisual('table-double', x, bottomY, 0);
     }
   }
