@@ -105,13 +105,14 @@ export function generateLayout(type: LayoutType, roomWidth: number, roomHeight: 
     // Left: 2 vertical (facing right)
     // Right: 2 vertical (facing left)
     // Bottom: 2 horizontal (facing up)
-    
+
     const groupVisualW = 2.0;
     const groupVisualH = 2.8;
-    
-    const cols = Math.floor(usableWidth / (groupVisualW + 0.5));
-    const rows = Math.floor(usableHeight / (groupVisualH + 0.5));
-    
+
+    // Always 4 islands (2x2) x 6 seats = 24 seats, regardless of room size.
+    const cols = 2;
+    const rows = 2;
+
     // Center the grid
     const totalGridW = cols * groupVisualW + (cols - 1) * 0.5;
     const totalGridH = rows * groupVisualH + (rows - 1) * 0.5;
@@ -162,14 +163,16 @@ export function generateLayout(type: LayoutType, roomWidth: number, roomHeight: 
     // Top Start Y (leave space for whiteboard)
     const topY = PADDING + 1.5; 
     
-    // Calculate Side Counts
+    // Fixed counts so the U always totals 12 double-tables = 24 seats
+    // (4 per side + 4 along the bottom), regardless of room size.
     const sideAvailableH = bottomY - topY;
-    const sideCount = Math.max(1, Math.floor(sideAvailableH / (vH + 0.1)));
-    
-    // Spacing optimization
+    const sideCount = 4;
+
+    // Spacing optimization (falls back to a small minimum gap - tables may
+    // pack tightly/overlap in a small room rather than the count dropping).
     const sideGapY = sideCount > 1 ? (sideAvailableH - sideCount * vH) / (sideCount - 1) : 0.1;
-    // Cap gap
-    const finalSideGapY = Math.min(sideGapY, 0.5);
+    // Cap gap, but never let it collapse to zero/negative.
+    const finalSideGapY = Math.max(0.05, Math.min(sideGapY, 0.5));
     // Re-center vertically if extra space
     const actualSideH = sideCount * vH + (sideCount - 1) * finalSideGapY;
     const sideStartActualY = topY + (sideAvailableH - actualSideH) / 2;
@@ -191,10 +194,10 @@ export function generateLayout(type: LayoutType, roomWidth: number, roomHeight: 
     // Start X for bottom row
     const bottomStartX = PADDING + vW;
     
-    const bottomCount = Math.max(1, Math.floor(bottomAvailableW / (w + 0.1)));
-    
+    const bottomCount = 4;
+
     const bottomGapX = bottomCount > 1 ? (bottomAvailableW - bottomCount * w) / (bottomCount - 1) : 0.1;
-    const finalBottomGapX = Math.min(bottomGapX, 0.5);
+    const finalBottomGapX = Math.max(0.05, Math.min(bottomGapX, 0.5));
     
     const actualBottomW = bottomCount * w + (bottomCount - 1) * finalBottomGapX;
     const bottomStartActualX = bottomStartX + (bottomAvailableW - actualBottomW) / 2;
