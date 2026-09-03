@@ -54,7 +54,8 @@ export const TRANSLATIONS = {
       unassignedTitle: "Unassigned Students",
       allAssigned: "All students assigned!",
       zoneRow: "Row",
-      noPreference: "No preference"
+      noPreference: "No preference",
+      placementHint: "Tap a student to select them, then tap an empty seat on the map to place them there."
     },
     relations: {
       title: "Relationship Tools",
@@ -159,7 +160,8 @@ export const TRANSLATIONS = {
       unassignedTitle: "Nicht zugewiesen",
       allAssigned: "Alle Schüler platziert!",
       zoneRow: "Reihe",
-      noPreference: "Keine Präferenz"
+      noPreference: "Keine Präferenz",
+      placementHint: "Tippen Sie auf einen Schüler, um ihn auszuwählen, und tippen Sie dann auf einen freien Platz im Raum, um ihn dort zu platzieren."
     },
     relations: {
       title: "Beziehungs-Werkzeuge",

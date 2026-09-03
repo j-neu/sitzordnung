@@ -544,6 +544,7 @@ export function StudentsPanel() {
           {unassignedStudents.length}
         </span>
       </div>
+      <p className="px-5 pb-2 text-[11px] text-slate-400">{t.students.placementHint}</p>
 
       {/* List */}
       <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2 custom-scrollbar">

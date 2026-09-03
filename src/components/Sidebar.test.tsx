@@ -17,6 +17,14 @@ describe('StudentsPanel standalone rendering', () => {
 
     expect(screen.getByText('Jamie Rivera')).toBeInTheDocument();
   });
+
+  it('explains the tap-to-select, tap-to-place flow', () => {
+    render(<StudentsPanel />);
+
+    expect(
+      screen.getByText('Tap a student to select them, then tap an empty seat on the map to place them there.')
+    ).toBeInTheDocument();
+  });
 });
 
 describe('StudentsPanel tap-to-select', () => {
