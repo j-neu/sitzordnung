@@ -157,22 +157,31 @@ export function generateLayout(type: LayoutType, roomWidth: number, roomHeight: 
     const vW = h; // 0.8
     const vH = w; // 1.8
 
-    // Fixed spacing between tables. Unlike a gap computed from available
-    // room space, this never shrinks toward zero, so tables can never touch
-    // or overlap - not each other, and not the bottom row, because the
-    // bottom row's Y position is *derived* from where the side columns
-    // actually end (see bottomY below) rather than computed independently
-    // from the room's height. The two can then never collide, regardless
-    // of room size.
-    const GAP = 0.15;
-
     // Fixed counts so the U always totals 12 double-tables = 24 seats
     // (4 per side + 4 along the bottom), regardless of room size.
     const sideCount = 4;
     const bottomCount = 4;
 
+    // 4 stacked double-tables (7.2m) plus the bottom row (0.8m) is already
+    // 8m tall before any gaps - close to (or, in the default 8x10 room,
+    // exactly) the full usable height. So the gap between tables is
+    // *derived* from whatever vertical room is actually left over (split
+    // across the top clearance + the gaps between the 4 side tables + the
+    // gap before the bottom row), clamped to a sensible max, rather than a
+    // fixed constant. That keeps the whole U within the room's walls (with
+    // the usual PADDING margin) for any room tall enough to fit it at all,
+    // shrinking toward touching-but-never-overlapping tables only when the
+    // room is too short to give a full margin - never past the far wall.
+    const MAX_GAP = 0.15;
+    const bottomRowH = h;
+    const gapSlots = sideCount + 1; // top clearance + (sideCount-1) side gaps + 1 gap before the bottom row
+    const contentMinHeight = sideCount * vH + bottomRowH;
+    const availableHeight = Math.max(contentMinHeight, roomHeight - 2 * PADDING);
+    const slack = availableHeight - contentMinHeight;
+    const GAP = Math.max(0, Math.min(MAX_GAP, slack / gapSlots));
+
     // Top Start Y (leave space for whiteboard)
-    const topY = PADDING + 0.8;
+    const topY = PADDING + GAP;
     const actualSideH = sideCount * vH + (sideCount - 1) * GAP;
 
     // Place Left Side (Rot 90)
@@ -194,19 +203,44 @@ export function generateLayout(type: LayoutType, roomWidth: number, roomHeight: 
 
     // Bottom Row - starts strictly after the side columns end (+ one more
     // gap), so it can never overlap them vertically no matter how tall the
-    // side columns ended up being for a given room.
+    // side columns ended up being for a given room. Its Y range therefore
+    // never overlaps the side columns' Y range, so - unlike the old version,
+    // which squeezed it into the (often too-narrow) gap between the two
+    // columns and could push it past the room's side walls - it's free to
+    // use its own horizontal budget centered on the room, the same
+    // fits-first/shrinks-if-it-must approach used for the vertical GAP above.
     const bottomY = topY + actualSideH + GAP;
-    const bottomAvailableW = rightColX - (leftColX + vW); // Width between columns
-    const bottomStartX = leftColX + vW;
-
-    const actualBottomW = bottomCount * w + (bottomCount - 1) * GAP;
-    const bottomStartActualX = bottomStartX + Math.max(0, (bottomAvailableW - actualBottomW) / 2);
+    const bottomContentMinW = bottomCount * w;
+    const bottomAvailableW = Math.max(bottomContentMinW, roomWidth - 2 * PADDING);
+    const bottomSlack = bottomAvailableW - bottomContentMinW;
+    const bottomGap = bottomCount > 1 ? Math.max(0, Math.min(MAX_GAP, bottomSlack / (bottomCount - 1))) : 0;
+    const actualBottomW = bottomContentMinW + (bottomCount - 1) * bottomGap;
+    const bottomStartActualX = (roomWidth - actualBottomW) / 2;
 
     for (let i = 0; i < bottomCount; i++) {
-        const x = bottomStartActualX + i * (w + GAP);
+        const x = bottomStartActualX + i * (w + bottomGap);
         addVisual('table-double', x, bottomY, 0);
     }
   }
 
-  return furniture;
+  // All templates above are built assuming the whiteboard sits at the top
+  // (y=0) with the "front" row nearest it. Mirroring the whole arrangement
+  // vertically moves the whiteboard to the bottom wall while keeping every
+  // row's distance-from-the-board unchanged, so seating still faces the
+  // board without each template needing its own bottom-up variant.
+  return mirrorVertically(furniture, roomHeight);
+}
+
+function mirrorVertically(items: Furniture[], roomHeight: number): Furniture[] {
+  // item.x/y always anchor the *unrotated* bounding box's top-left (rotation
+  // happens in place around that box's own center - see addVisual above and
+  // FurnitureItem's Group offsetX/offsetY in RoomCanvas.tsx), so mirroring
+  // only needs the unrotated height here, regardless of the item's rotation.
+  return items.map((item) => {
+    const { height } = FURNITURE_DIMENSIONS[item.type];
+    return {
+      ...item,
+      y: Math.round((roomHeight - item.y - height) * 100) / 100
+    };
+  });
 }

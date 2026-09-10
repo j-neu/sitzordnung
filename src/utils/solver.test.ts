@@ -54,8 +54,11 @@ describe('runOptimization', () => {
       students, seats, initialAssignments, relationships, 10, config, []
     );
 
-    // 'b' should have moved into the empty seat next to 'a' to minimize
-    // the green-relationship distance cost.
-    expect(result.assignments['s2']).toBe('b');
+    // The optimal arrangement puts 'a' and 'b' in the two adjacent seats
+    // (s1, s2) and leaves the far seat (s3) empty - which one of 'a'/'b'
+    // ends up in which of the two adjacent seats is an arbitrary tie, so
+    // only assert on the seats used, not the exact student->seat mapping.
+    expect(result.assignments['s3']).toBeFalsy();
+    expect(new Set([result.assignments['s1'], result.assignments['s2']])).toEqual(new Set(['a', 'b']));
   });
 });

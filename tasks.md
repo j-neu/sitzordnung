@@ -138,3 +138,10 @@
   - Test: manual — right-click occupied seat shows "Lock Student"; after locking shows "Unlock Student"; empty seat shows neither.
 - [x] Add amber locked-seat styling (stroke color, seat indicator + lock glyph) in `FurnitureItem`.
   - Test: manual — locked seat visually distinct from occupied (blue) and furniture-locked (red) seats.
+
+## Phase 12: Move Whiteboard to the Bottom in Quick Layouts
+
+- [x] Mirror every quick-layout template's generated furniture vertically (whiteboard included) so the whiteboard ends up at the bottom wall while seating still faces it.
+  - Test: whiteboard `y` equals `roomHeight - whiteboard height` for all 4 templates across 6 room sizes; tables never overlap the whiteboard.
+- [x] Fix a pre-existing "u-shape" containment bug the mirror surfaced: derive the vertical gap between side tables from actual available room height (instead of a fixed constant) and center the bottom row on the room's own width (instead of squeezing it between the side columns), so nothing renders outside the room's walls in reasonably-sized rooms.
+  - Test: every u-shape item's AABB stays within `[0, roomWidth] x [0, roomHeight]` at 8x10 and 14x16 (6x6 excluded - see code comment: 4 stacked double-tables alone need 7.2m, a pre-existing, unrelated limit for that specific size).

@@ -66,5 +66,49 @@ describe('generateLayout', () => {
         expect(overlaps, `overlaps at room ${w}x${h}: ${JSON.stringify(overlaps)}`).toEqual([]);
       }
     });
+
+    it(`"${type}" places the whiteboard at the bottom wall, regardless of room size`, () => {
+      for (const [w, h] of roomSizes) {
+        const furniture = generateLayout(type, w, h);
+        const whiteboard = furniture.find(f => f.type === 'whiteboard')!;
+        const { height } = FURNITURE_DIMENSIONS['whiteboard'];
+        expect(whiteboard.y).toBeCloseTo(h - height, 5);
+      }
+    });
+
+    it(`"${type}" never places a table overlapping the whiteboard, regardless of room size`, () => {
+      for (const [w, h] of roomSizes) {
+        const furniture = generateLayout(type, w, h);
+        const whiteboard = furniture.find(f => f.type === 'whiteboard')!;
+        const tableWbOverlaps = furniture
+          .filter(f => f.type.startsWith('table'))
+          .filter(t => boxesOverlap(aabb(t), aabb(whiteboard)));
+        expect(tableWbOverlaps, `table/whiteboard overlap at room ${w}x${h}`).toEqual([]);
+      }
+    });
+
   }
+
+  // Only "u-shape" gets a strict containment check: it's the one template
+  // whose geometry was reworked in this change (vertical gaps derived from
+  // available room height, bottom row centered on the room's own width) -
+  // the other three templates have pre-existing containment gaps at very
+  // small room sizes that are unrelated to this change and out of scope here.
+  it('"u-shape" keeps every item within the room\'s walls for reasonably-sized rooms', () => {
+    // Excludes 6x6 along with the deliberately extreme sizes (4x4, 3x20,
+    // 20x3) covered by the overlap/seat-count tests above: 4 stacked
+    // double-tables alone need 7.2m of height, so a 6m-tall room can't fit
+    // this template's fixed 24-seat structure at any gap - a pre-existing
+    // (and worse, before this change) limit, not something introduced here.
+    for (const [w, h] of [[8, 10], [14, 16]] as [number, number][]) {
+      const furniture = generateLayout('u-shape', w, h);
+      for (const item of furniture) {
+        const box = aabb(item);
+        expect(box.minX, `${item.type} left edge outside room at ${w}x${h}`).toBeGreaterThanOrEqual(-1e-6);
+        expect(box.minY, `${item.type} top edge outside room at ${w}x${h}`).toBeGreaterThanOrEqual(-1e-6);
+        expect(box.maxX, `${item.type} right edge outside room at ${w}x${h}`).toBeLessThanOrEqual(w + 1e-6);
+        expect(box.maxY, `${item.type} bottom edge outside room at ${w}x${h}`).toBeLessThanOrEqual(h + 1e-6);
+      }
+    }
+  });
 });
