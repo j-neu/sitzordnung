@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Furniture, RoomState, Student, FurnitureType } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { getAbsoluteSeatPositions } from '../utils/geometry';
+import { FURNITURE_DIMENSIONS } from '../constants';
 import SolverWorker from '../workers/solver.worker?worker';
 import type { Language } from '../locales';
 
@@ -345,6 +346,15 @@ export const useStore = create<StoreState>((set, get) => ({
       .filter((s): s is typeof s & { lockedSeatId: string } => !!s.lockedSeatId)
       .map((s) => s.lockedSeatId);
 
+    // "Front" means "close to the whiteboard" - derive which half of the
+    // room that actually is from the whiteboard's real position, rather
+    // than assuming it's always at the top (quick layouts place it at the
+    // bottom; a manually placed one could be anywhere).
+    const whiteboard = state.furniture.find((f) => f.type === 'whiteboard');
+    const frontIsTop = whiteboard
+      ? whiteboard.y + FURNITURE_DIMENSIONS['whiteboard'].height / 2 < state.height / 2
+      : true;
+
     worker.postMessage({
         type: 'START',
         payload: {
@@ -357,6 +367,7 @@ export const useStore = create<StoreState>((set, get) => ({
             seats: seats,
             roomHeight: state.height,
             lockedSeatIds,
+            frontIsTop,
             config: {
                 maxIterations: 100000,
                 weights: {

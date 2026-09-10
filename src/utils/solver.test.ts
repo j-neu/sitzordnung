@@ -62,6 +62,22 @@ describe('runOptimization', () => {
     expect(new Set([result.assignments['s1'], result.assignments['s2']])).toEqual(new Set(['a', 'b']));
   });
 
+  it('respects zonePreference relative to the whiteboard side, not a hardcoded top-half assumption', () => {
+    const seats: SeatPosition[] = [
+      { id: 'top', x: 0, y: 0 },
+      { id: 'bottom', x: 0, y: 10 }
+    ];
+    const students = [{ ...student('a'), zonePreference: 'back' as const }];
+    const initialAssignments = { top: null, bottom: 'a' };
+
+    // Quick layouts place the whiteboard at the bottom wall, so "back"
+    // (away from the whiteboard) means the TOP seat here - the opposite of
+    // what a hardcoded "y < roomHeight/2 = front" assumption would give.
+    const result = runOptimization(students, seats, initialAssignments, [], 10, config, [], undefined, false);
+
+    expect(result.assignments['top']).toBe('a');
+  });
+
   it('moves a "prefer alone" student off a shared double desk when a free seat exists', () => {
     const seats: SeatPosition[] = [
       { id: 'd-L', x: 0, y: 0 },

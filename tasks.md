@@ -158,3 +158,5 @@
   - Test: manual — right-click a seated student, toggle each option on/off via label swap; switching directly from "Prefer Front Row" to "Prefer Back Row" works in one click.
 - [x] Add front/back/alone canvas badges (colored circle + letter, top-right of seat) to `FurnitureItem`'s seat rendering.
   - Test: manual — badges appear/disappear correctly without overlapping the existing lock/occupied indicator.
+- [x] Fix a bug (found via manual testing after shipping): the solver's front/back cost check hardcoded "top half of room = front", which was only true before Phase 12 moved the whiteboard to the bottom in quick layouts - "back" preferences were being scored backwards for the common case. Derive the actual front/back direction from the whiteboard furniture's real `y` position (`frontIsTop` in `useStore.ts`/`solver.ts`/`solver.worker.ts`) instead of assuming it.
+  - Test: `solver.test.ts` - a "prefer back" student with the whiteboard-at-bottom (`frontIsTop: false`) ends up at the seat away from the whiteboard, not the hardcoded top-half seat.

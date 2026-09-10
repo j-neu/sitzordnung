@@ -10,13 +10,14 @@ type SolverMessage = {
     relationships: Relationship[];
     roomHeight: number; // For zone calc
     lockedSeatIds?: string[];
+    frontIsTop?: boolean;
     config: SolverConfig;
   };
 };
 
 self.onmessage = (e: MessageEvent<SolverMessage>) => {
   if (e.data.type === 'START') {
-    const { students, seats, assignments, relationships, roomHeight, lockedSeatIds, config } = e.data.payload;
+    const { students, seats, assignments, relationships, roomHeight, lockedSeatIds, frontIsTop, config } = e.data.payload;
 
     const result = runOptimization(
       students,
@@ -35,7 +36,8 @@ self.onmessage = (e: MessageEvent<SolverMessage>) => {
             iteration: progress.iterations
           }
         });
-      }
+      },
+      frontIsTop ?? true
     );
 
     self.postMessage({

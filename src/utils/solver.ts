@@ -30,7 +30,8 @@ export function runOptimization(
   roomHeight: number,
   config: SolverConfig,
   lockedSeatIds: string[] = [],
-  onProgress?: (result: SolverResult) => void
+  onProgress?: (result: SolverResult) => void,
+  frontIsTop: boolean = true
 ): SolverResult {
   // Current state: Map<seatId, studentId | null>
   let currentAssignments = { ...initialAssignments };
@@ -87,7 +88,7 @@ export function runOptimization(
         if (!pos) return;
 
         if (s.zonePreference) {
-            const isFront = pos.y < roomHeight / 2;
+            const isFront = frontIsTop ? pos.y < roomHeight / 2 : pos.y > roomHeight / 2;
 
             if (s.zonePreference === 'front' && !isFront) cost += config.weights.zone;
             if (s.zonePreference === 'back' && isFront) cost += config.weights.zone;
