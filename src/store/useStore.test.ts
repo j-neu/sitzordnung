@@ -17,6 +17,13 @@ describe('resetStore test helper', () => {
   });
 });
 
+describe('addStudent', () => {
+  it('defaults preferAlone to false', () => {
+    useStore.getState().addStudent('Alice');
+    expect(useStore.getState().students[0].preferAlone).toBe(false);
+  });
+});
+
 describe('setPendingAssignment', () => {
   it('sets the pending student', () => {
     useStore.getState().setPendingAssignment('s1');

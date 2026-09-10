@@ -21,7 +21,7 @@ export default function RoomCanvas({ stageRef }: RoomCanvasProps) {
     assignments, students, unassignStudent, removeFurniture, relationships,
     interactionMode, handleRelationClick, relationSelection, language,
     pendingAssignment, setPendingAssignment, assignPendingStudentToSeat,
-    lockStudentToSeat, unlockStudent
+    lockStudentToSeat, unlockStudent, updateStudent
   } = useStore();
 
   const t = TRANSLATIONS[language];
@@ -242,6 +242,23 @@ export default function RoomCanvas({ stageRef }: RoomCanvasProps) {
                 action: () => isStudentLocked
                     ? unlockStudent(student.id)
                     : lockStudentToSeat(student.id, seatId)
+             });
+
+             const prefersFront = student.zonePreference === 'front';
+             options.push({
+                label: prefersFront ? t.canvas.context.removeFrontPreference : t.canvas.context.preferFront,
+                action: () => updateStudent(student.id, { zonePreference: prefersFront ? null : 'front' })
+             });
+
+             const prefersBack = student.zonePreference === 'back';
+             options.push({
+                label: prefersBack ? t.canvas.context.removeBackPreference : t.canvas.context.preferBack,
+                action: () => updateStudent(student.id, { zonePreference: prefersBack ? null : 'back' })
+             });
+
+             options.push({
+                label: student.preferAlone ? t.canvas.context.removeAlonePreference : t.canvas.context.preferAlone,
+                action: () => updateStudent(student.id, { preferAlone: !student.preferAlone })
              });
         }
     }
@@ -599,6 +616,18 @@ function FurnitureItem({
                                 />
                             </>
                           )}
+                          {student && (() => {
+                            const badges: { key: string; fill: string; letter: string }[] = [];
+                            if (student.zonePreference === 'front') badges.push({ key: 'front', fill: '#3B82F6', letter: 'F' });
+                            if (student.zonePreference === 'back') badges.push({ key: 'back', fill: '#8B5CF6', letter: 'B' });
+                            if (student.preferAlone) badges.push({ key: 'alone', fill: '#14B8A6', letter: 'A' });
+                            return badges.map((b, i) => (
+                              <Group key={b.key} x={seatPixelW - 16 - 8 - i * 14} y={6}>
+                                <Circle radius={6} fill={b.fill} />
+                                <Text text={b.letter} fontSize={7} fontStyle="bold" fill="#FFFFFF" x={-3} y={-4} />
+                              </Group>
+                            ));
+                          })()}
                            {!student && !isLocked && (
                                 <Group y={28}>
                                      <Circle radius={10} fill="#F1F5F9" x={10} y={10} />

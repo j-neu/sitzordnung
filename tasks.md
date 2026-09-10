@@ -145,3 +145,16 @@
   - Test: whiteboard `y` equals `roomHeight - whiteboard height` for all 4 templates across 6 room sizes; tables never overlap the whiteboard.
 - [x] Fix a pre-existing "u-shape" containment bug the mirror surfaced: derive the vertical gap between side tables from actual available room height (instead of a fixed constant) and center the bottom row on the room's own width (instead of squeezing it between the side columns), so nothing renders outside the room's walls in reasonably-sized rooms.
   - Test: every u-shape item's AABB stays within `[0, roomWidth] x [0, roomHeight]` at 8x10 and 14x16 (6x6 excluded - see code comment: 4 stacked double-tables alone need 7.2m, a pre-existing, unrelated limit for that specific size).
+
+## Phase 13: Student Seating Preferences (Front / Back / Sit Alone)
+
+- [x] Add `preferAlone: boolean` to `Student`; default `false` in `addStudent`/`importStudents`.
+  - Test: `addStudent` produces a student with `preferAlone: false`.
+- [x] Add `alone` weight to `SolverConfig`, a sibling-seat precompute (derived from the `-L`/`-R` seatId convention), and a sit-alone cost term in `src/utils/solver.ts::runOptimization`; add `alone: 50.0` to the config `startOptimization` posts to the worker.
+  - Test: a `preferAlone` student sharing a double desk with another student, with a free single seat available, ends up with their double-desk sibling seat empty after optimization.
+- [x] Add `preferFront`/`removeFrontPreference`/`preferBack`/`removeBackPreference`/`preferAlone`/`removeAlonePreference` keys to `en`/`de` in `locales.ts`.
+  - Test: manual — visible in context menu, labels swap correctly.
+- [x] Add three toggle options (reusing existing `zonePreference` field for front/back, new `preferAlone` for sit-alone) to `getContextMenuOptions` in `RoomCanvas.tsx`, wired to `updateStudent`.
+  - Test: manual — right-click a seated student, toggle each option on/off via label swap; switching directly from "Prefer Front Row" to "Prefer Back Row" works in one click.
+- [x] Add front/back/alone canvas badges (colored circle + letter, top-right of seat) to `FurnitureItem`'s seat rendering.
+  - Test: manual — badges appear/disappear correctly without overlapping the existing lock/occupied indicator.

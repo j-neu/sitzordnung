@@ -12,6 +12,7 @@ export type SolverConfig = {
     green: number; // Distance minimization for friends
     red: number;   // Distance maximization for enemies
     zone: number;  // Penalty for wrong zone
+    alone: number; // Penalty for sharing a double desk when the student prefers to sit alone
   };
 };
 
@@ -37,6 +38,19 @@ export function runOptimization(
   // Pre-calculate Seat positions Map for O(1) access
   const seatPosMap = new Map<string, {x: number, y: number}>();
   seats.forEach(s => seatPosMap.set(s.id, { x: s.x, y: s.y }));
+
+  // Sibling seat on the same double desk (table-double seats are always
+  // "furnitureId-L"/"furnitureId-R" - see SEAT_LAYOUTS in constants.ts),
+  // derived purely from the seat-id string so this doesn't need furniture
+  // data. A single-table seat has no sibling.
+  const seatIdSet = new Set(seats.map(s => s.id));
+  const siblingSeatMap = new Map<string, string | null>();
+  seats.forEach(s => {
+    let sibling: string | null = null;
+    if (s.id.endsWith('-L')) sibling = s.id.slice(0, -2) + '-R';
+    else if (s.id.endsWith('-R')) sibling = s.id.slice(0, -2) + '-L';
+    siblingSeatMap.set(s.id, sibling && seatIdSet.has(sibling) ? sibling : null);
+  });
 
   // Pre-process relationships for faster lookup
   const studentRels = new Map<string, { friends: string[], enemies: string[] }>();
@@ -80,7 +94,17 @@ export function runOptimization(
         }
     });
 
-    // 2. Relationships
+    // 2. Sit-alone preference
+    students.forEach(s => {
+        if (!s.preferAlone) return;
+        const seatId = placedStudents.get(s.id);
+        if (!seatId) return;
+
+        const siblingSeatId = siblingSeatMap.get(seatId);
+        if (siblingSeatId && assigns[siblingSeatId]) cost += config.weights.alone;
+    });
+
+    // 3. Relationships
     relationships.forEach(r => {
         const seatA = placedStudents.get(r.studentAId);
         const seatB = placedStudents.get(r.studentBId);

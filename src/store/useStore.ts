@@ -175,7 +175,8 @@ export const useStore = create<StoreState>((set, get) => ({
         id: uuidv4(),
         name,
         zonePreference: null,
-        lockedSeatId: null
+        lockedSeatId: null,
+        preferAlone: false
       }
     ]
   })),
@@ -187,7 +188,8 @@ export const useStore = create<StoreState>((set, get) => ({
         id: uuidv4(),
         name,
         zonePreference: null,
-        lockedSeatId: null
+        lockedSeatId: null,
+        preferAlone: false
       } as Student))
     ]
   })),
@@ -360,7 +362,8 @@ export const useStore = create<StoreState>((set, get) => ({
                 weights: {
                     green: 1.0,
                     red: 50.0,
-                    zone: 50.0
+                    zone: 50.0,
+                    alone: 50.0
                 }
             }
         }

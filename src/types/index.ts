@@ -32,6 +32,7 @@ export interface Student {
   name: string;
   zonePreference: ZonePreference;
   lockedSeatId: string | null; // If set, student must sit here
+  preferAlone: boolean; // If true, optimizer avoids seating another student on the same double desk
 }
 
 export interface Relationship {

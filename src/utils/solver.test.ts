@@ -4,11 +4,11 @@ import type { Student, Relationship } from '../types';
 
 const config: SolverConfig = {
   maxIterations: 500,
-  weights: { green: 1.0, red: 50.0, zone: 50.0 }
+  weights: { green: 1.0, red: 50.0, zone: 50.0, alone: 50.0 }
 };
 
 function student(id: string): Student {
-  return { id, name: id, zonePreference: null, lockedSeatId: null };
+  return { id, name: id, zonePreference: null, lockedSeatId: null, preferAlone: false };
 }
 
 describe('runOptimization', () => {
@@ -60,5 +60,26 @@ describe('runOptimization', () => {
     // only assert on the seats used, not the exact student->seat mapping.
     expect(result.assignments['s3']).toBeFalsy();
     expect(new Set([result.assignments['s1'], result.assignments['s2']])).toEqual(new Set(['a', 'b']));
+  });
+
+  it('moves a "prefer alone" student off a shared double desk when a free seat exists', () => {
+    const seats: SeatPosition[] = [
+      { id: 'd-L', x: 0, y: 0 },
+      { id: 'd-R', x: 0.9, y: 0 },
+      { id: 's1', x: 100, y: 0 }
+    ];
+    const students = [
+      { ...student('a'), preferAlone: true },
+      student('b')
+    ];
+    const initialAssignments = { 'd-L': 'a', 'd-R': 'b' };
+
+    const result = runOptimization(students, seats, initialAssignments, [], 10, config, []);
+
+    const aSeat = Object.entries(result.assignments).find(([, sid]) => sid === 'a')?.[0];
+    const siblingOfA = aSeat === 'd-L' ? 'd-R' : aSeat === 'd-R' ? 'd-L' : null;
+    if (siblingOfA) {
+      expect(result.assignments[siblingOfA]).toBeFalsy();
+    }
   });
 });

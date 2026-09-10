@@ -105,6 +105,12 @@ export const TRANSLATIONS = {
         unlock: "Unlock Furniture",
         lockStudent: "Lock Student",
         unlockStudent: "Unlock Student",
+        preferFront: "Prefer Front Row",
+        removeFrontPreference: "Remove Front Preference",
+        preferBack: "Prefer Back Row",
+        removeBackPreference: "Remove Back Preference",
+        preferAlone: "Prefer Sitting Alone",
+        removeAlonePreference: "Remove Alone Preference",
         delete: "Delete Furniture"
       }
     }
@@ -213,6 +219,12 @@ export const TRANSLATIONS = {
         unlock: "Möbel entsperren",
         lockStudent: "Schüler sperren",
         unlockStudent: "Schüler entsperren",
+        preferFront: "Vordere Reihe bevorzugen",
+        removeFrontPreference: "Vordere-Reihe-Präferenz entfernen",
+        preferBack: "Hintere Reihe bevorzugen",
+        removeBackPreference: "Hintere-Reihe-Präferenz entfernen",
+        preferAlone: "Alleine sitzen bevorzugen",
+        removeAlonePreference: "Alleine-sitzen-Präferenz entfernen",
         delete: "Möbel löschen"
       }
     }
