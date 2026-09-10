@@ -346,14 +346,18 @@ export const useStore = create<StoreState>((set, get) => ({
       .filter((s): s is typeof s & { lockedSeatId: string } => !!s.lockedSeatId)
       .map((s) => s.lockedSeatId);
 
-    // "Front" means "close to the whiteboard" - derive which half of the
-    // room that actually is from the whiteboard's real position, rather
-    // than assuming it's always at the top (quick layouts place it at the
-    // bottom; a manually placed one could be anywhere).
+    // Front/back preferences are scored as distance to the whiteboard's
+    // actual position - a "front" preference behaves like a green
+    // (like) relationship with the board, "back" like a red (dislike)
+    // one - rather than a flat half-of-room check, so being merely on
+    // the correct side no longer fully satisfies the preference.
     const whiteboard = state.furniture.find((f) => f.type === 'whiteboard');
-    const frontIsTop = whiteboard
-      ? whiteboard.y + FURNITURE_DIMENSIONS['whiteboard'].height / 2 < state.height / 2
-      : true;
+    const whiteboardPos = whiteboard
+      ? {
+          x: whiteboard.x + FURNITURE_DIMENSIONS['whiteboard'].width / 2,
+          y: whiteboard.y + FURNITURE_DIMENSIONS['whiteboard'].height / 2
+        }
+      : null;
 
     worker.postMessage({
         type: 'START',
@@ -365,15 +369,13 @@ export const useStore = create<StoreState>((set, get) => ({
             width: state.width,
             height: state.height,
             seats: seats,
-            roomHeight: state.height,
+            whiteboardPos,
             lockedSeatIds,
-            frontIsTop,
             config: {
                 maxIterations: 100000,
                 weights: {
                     green: 1.0,
                     red: 50.0,
-                    zone: 50.0,
                     alone: 50.0
                 }
             }

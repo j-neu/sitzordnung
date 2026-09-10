@@ -9,9 +9,8 @@ export type SeatPosition = {
 export type SolverConfig = {
   maxIterations: number;
   weights: {
-    green: number; // Distance minimization for friends
-    red: number;   // Distance maximization for enemies
-    zone: number;  // Penalty for wrong zone
+    green: number; // Distance minimization for friends (and for a "prefer front" zone preference)
+    red: number;   // Distance maximization for enemies (and for a "prefer back" zone preference)
     alone: number; // Penalty for sharing a double desk when the student prefers to sit alone
   };
 };
@@ -27,11 +26,10 @@ export function runOptimization(
   seats: SeatPosition[],
   initialAssignments: Record<string, string | null>,
   relationships: Relationship[],
-  roomHeight: number,
+  whiteboardPos: { x: number; y: number } | null,
   config: SolverConfig,
   lockedSeatIds: string[] = [],
-  onProgress?: (result: SolverResult) => void,
-  frontIsTop: boolean = true
+  onProgress?: (result: SolverResult) => void
 ): SolverResult {
   // Current state: Map<seatId, studentId | null>
   let currentAssignments = { ...initialAssignments };
@@ -79,21 +77,35 @@ export function runOptimization(
         if (studentId) placedStudents.set(studentId, seatId);
     }
 
-    // 1. Zone Preferences
-    students.forEach(s => {
-        const seatId = placedStudents.get(s.id);
-        if (!seatId) return;
+    // 1. Zone Preferences - treated as a "relationship" with the whiteboard:
+    // "front" behaves like a green (like) relationship (cost grows with
+    // distance, so the optimizer pulls the student as close as it can),
+    // "back" like a red (dislike) one (cost spikes as distance shrinks, so
+    // merely being on the correct side of the room isn't enough - it keeps
+    // pushing toward the far wall). Same formulas as the relationship cost
+    // below, just against a fixed whiteboard point instead of another seat.
+    if (whiteboardPos) {
+        students.forEach(s => {
+            if (!s.zonePreference) return;
 
-        const pos = seatPosMap.get(seatId);
-        if (!pos) return;
+            const seatId = placedStudents.get(s.id);
+            if (!seatId) return;
 
-        if (s.zonePreference) {
-            const isFront = frontIsTop ? pos.y < roomHeight / 2 : pos.y > roomHeight / 2;
+            const pos = seatPosMap.get(seatId);
+            if (!pos) return;
 
-            if (s.zonePreference === 'front' && !isFront) cost += config.weights.zone;
-            if (s.zonePreference === 'back' && isFront) cost += config.weights.zone;
-        }
-    });
+            const dx = pos.x - whiteboardPos.x;
+            const dy = pos.y - whiteboardPos.y;
+            const distSq = dx*dx + dy*dy;
+            const dist = Math.sqrt(distSq);
+
+            if (s.zonePreference === 'front') {
+                cost += dist * config.weights.green;
+            } else {
+                cost += (config.weights.red * 10) / (distSq + 0.1);
+            }
+        });
+    }
 
     // 2. Sit-alone preference
     students.forEach(s => {

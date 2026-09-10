@@ -8,23 +8,22 @@ type SolverMessage = {
     seats: SeatPosition[];
     assignments: Record<string, string | null>;
     relationships: Relationship[];
-    roomHeight: number; // For zone calc
+    whiteboardPos: { x: number; y: number } | null;
     lockedSeatIds?: string[];
-    frontIsTop?: boolean;
     config: SolverConfig;
   };
 };
 
 self.onmessage = (e: MessageEvent<SolverMessage>) => {
   if (e.data.type === 'START') {
-    const { students, seats, assignments, relationships, roomHeight, lockedSeatIds, frontIsTop, config } = e.data.payload;
+    const { students, seats, assignments, relationships, whiteboardPos, lockedSeatIds, config } = e.data.payload;
 
     const result = runOptimization(
       students,
       seats,
       assignments,
       relationships,
-      roomHeight,
+      whiteboardPos,
       config,
       lockedSeatIds ?? [],
       (progress) => {
@@ -36,8 +35,7 @@ self.onmessage = (e: MessageEvent<SolverMessage>) => {
             iteration: progress.iterations
           }
         });
-      },
-      frontIsTop ?? true
+      }
     );
 
     self.postMessage({

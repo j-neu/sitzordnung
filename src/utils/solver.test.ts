@@ -4,7 +4,7 @@ import type { Student, Relationship } from '../types';
 
 const config: SolverConfig = {
   maxIterations: 500,
-  weights: { green: 1.0, red: 50.0, zone: 50.0, alone: 50.0 }
+  weights: { green: 1.0, red: 50.0, alone: 50.0 }
 };
 
 function student(id: string): Student {
@@ -29,7 +29,7 @@ describe('runOptimization', () => {
     const initialAssignments = { s1: 'locked', s2: 'mover', s3: 'other' };
 
     const result = runOptimization(
-      students, seats, initialAssignments, relationships, 10, config, ['s1']
+      students, seats, initialAssignments, relationships, null, config, ['s1']
     );
 
     expect(result.assignments['s1']).toBe('locked');
@@ -51,7 +51,7 @@ describe('runOptimization', () => {
     const initialAssignments = { s1: 'a', s3: 'b' };
 
     const result = runOptimization(
-      students, seats, initialAssignments, relationships, 10, config, []
+      students, seats, initialAssignments, relationships, null, config, []
     );
 
     // The optimal arrangement puts 'a' and 'b' in the two adjacent seats
@@ -62,20 +62,42 @@ describe('runOptimization', () => {
     expect(new Set([result.assignments['s1'], result.assignments['s2']])).toEqual(new Set(['a', 'b']));
   });
 
-  it('respects zonePreference relative to the whiteboard side, not a hardcoded top-half assumption', () => {
+  it('pulls a "front" preference as close to the whiteboard as possible, not just onto the correct half', () => {
     const seats: SeatPosition[] = [
-      { id: 'top', x: 0, y: 0 },
-      { id: 'bottom', x: 0, y: 10 }
+      { id: 'near', x: 0, y: 1 },
+      { id: 'mid', x: 0, y: 5 },
+      { id: 'far', x: 0, y: 9 }
+    ];
+    const students = [{ ...student('a'), zonePreference: 'front' as const }];
+    const initialAssignments = { near: null, mid: null, far: 'a' };
+    const whiteboardPos = { x: 0, y: 0 };
+
+    const result = runOptimization(students, seats, initialAssignments, [], whiteboardPos, config, []);
+
+    expect(result.assignments['near']).toBe('a');
+  });
+
+  it('pushes a "back" preference toward the seat farthest from the whiteboard, not just onto the correct half', () => {
+    const seats: SeatPosition[] = [
+      { id: 'near', x: 0, y: 1 },
+      { id: 'mid', x: 0, y: 5 },
+      { id: 'far', x: 0, y: 9 }
     ];
     const students = [{ ...student('a'), zonePreference: 'back' as const }];
-    const initialAssignments = { top: null, bottom: 'a' };
+    const initialAssignments = { near: 'a', mid: null, far: null };
+    const whiteboardPos = { x: 0, y: 0 };
 
-    // Quick layouts place the whiteboard at the bottom wall, so "back"
-    // (away from the whiteboard) means the TOP seat here - the opposite of
-    // what a hardcoded "y < roomHeight/2 = front" assumption would give.
-    const result = runOptimization(students, seats, initialAssignments, [], 10, config, [], undefined, false);
+    const result = runOptimization(students, seats, initialAssignments, [], whiteboardPos, config, []);
 
-    expect(result.assignments['top']).toBe('a');
+    expect(result.assignments['far']).toBe('a');
+  });
+
+  it('ignores zonePreference when the room has no whiteboard', () => {
+    const seats: SeatPosition[] = [{ id: 's1', x: 0, y: 0 }];
+    const students = [{ ...student('a'), zonePreference: 'front' as const }];
+    const initialAssignments = { s1: 'a' };
+
+    expect(() => runOptimization(students, seats, initialAssignments, [], null, config, [])).not.toThrow();
   });
 
   it('moves a "prefer alone" student off a shared double desk when a free seat exists', () => {
@@ -90,7 +112,7 @@ describe('runOptimization', () => {
     ];
     const initialAssignments = { 'd-L': 'a', 'd-R': 'b' };
 
-    const result = runOptimization(students, seats, initialAssignments, [], 10, config, []);
+    const result = runOptimization(students, seats, initialAssignments, [], null, config, []);
 
     const aSeat = Object.entries(result.assignments).find(([, sid]) => sid === 'a')?.[0];
     const siblingOfA = aSeat === 'd-L' ? 'd-R' : aSeat === 'd-R' ? 'd-L' : null;
