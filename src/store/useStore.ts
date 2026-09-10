@@ -43,6 +43,9 @@ interface StoreState extends RoomState {
   setPendingAssignment: (studentId: string | null) => void;
   assignPendingStudentToSeat: (seatId: string) => void;
 
+  lockStudentToSeat: (studentId: string, seatId: string) => void;
+  unlockStudent: (studentId: string) => void;
+
   assignStudent: (studentId: string, seatId: string) => void;
   unassignStudent: (studentId: string) => void;
   clearAssignments: () => void;
@@ -158,6 +161,10 @@ export const useStore = create<StoreState>((set, get) => ({
     // Cleanup assignments: remove any seat starting with the furniture ID
     assignments: Object.fromEntries(
       Object.entries(state.assignments).filter(([seatId]) => !seatId.startsWith(id))
+    ),
+    // Cleanup locks: unlock any student locked to a seat on the removed furniture
+    students: state.students.map((s) =>
+      s.lockedSeatId && s.lockedSeatId.startsWith(id) ? { ...s, lockedSeatId: null } : s
     )
   })),
 
@@ -227,13 +234,31 @@ export const useStore = create<StoreState>((set, get) => ({
     );
     // Assign to new seat
     newAssignments[seatId] = studentId;
-    return { assignments: newAssignments };
+
+    // Moving a locked student to a different seat invalidates the stale lock
+    const student = state.students.find((s) => s.id === studentId);
+    const students = student?.lockedSeatId && student.lockedSeatId !== seatId
+      ? state.students.map((s) => s.id === studentId ? { ...s, lockedSeatId: null } : s)
+      : state.students;
+
+    return { assignments: newAssignments, students };
   }),
 
   unassignStudent: (studentId) => set((state) => ({
     assignments: Object.fromEntries(
       Object.entries(state.assignments).filter(([, sId]) => sId !== studentId)
+    ),
+    students: state.students.map((s) =>
+      s.id === studentId && s.lockedSeatId ? { ...s, lockedSeatId: null } : s
     )
+  })),
+
+  lockStudentToSeat: (studentId, seatId) => set((state) => ({
+    students: state.students.map((s) => s.id === studentId ? { ...s, lockedSeatId: seatId } : s)
+  })),
+
+  unlockStudent: (studentId) => set((state) => ({
+    students: state.students.map((s) => s.id === studentId ? { ...s, lockedSeatId: null } : s)
   })),
 
   clearAssignments: () => set({ assignments: {} }),
@@ -312,7 +337,12 @@ export const useStore = create<StoreState>((set, get) => ({
     
     // Calculate Absolute Seat Positions
     const seats = getAbsoluteSeatPositions(state.furniture);
-    
+
+    // Seats whose occupant must not be moved by the optimizer
+    const lockedSeatIds = state.students
+      .filter((s): s is typeof s & { lockedSeatId: string } => !!s.lockedSeatId)
+      .map((s) => s.lockedSeatId);
+
     worker.postMessage({
         type: 'START',
         payload: {
@@ -324,6 +354,7 @@ export const useStore = create<StoreState>((set, get) => ({
             height: state.height,
             seats: seats,
             roomHeight: state.height,
+            lockedSeatIds,
             config: {
                 maxIterations: 100000,
                 weights: {

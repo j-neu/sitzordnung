@@ -64,3 +64,85 @@ describe('setInteractionMode', () => {
     expect(useStore.getState().pendingAssignment).toBeNull();
   });
 });
+
+describe('student seat locking', () => {
+  it('lockStudentToSeat sets lockedSeatId', () => {
+    useStore.getState().addStudent('Alice');
+    const student = useStore.getState().students[0];
+    useStore.setState({ assignments: { seatA: student.id } });
+
+    useStore.getState().lockStudentToSeat(student.id, 'seatA');
+
+    expect(useStore.getState().students[0].lockedSeatId).toBe('seatA');
+  });
+
+  it('unlockStudent clears lockedSeatId', () => {
+    useStore.getState().addStudent('Alice');
+    const student = useStore.getState().students[0];
+    useStore.setState({
+      assignments: { seatA: student.id },
+      students: [{ ...student, lockedSeatId: 'seatA' }]
+    });
+
+    useStore.getState().unlockStudent(student.id);
+
+    expect(useStore.getState().students[0].lockedSeatId).toBeNull();
+  });
+
+  it('unassignStudent clears the lock for a locked student', () => {
+    useStore.getState().addStudent('Alice');
+    const student = useStore.getState().students[0];
+    useStore.setState({
+      assignments: { seatA: student.id },
+      students: [{ ...student, lockedSeatId: 'seatA' }]
+    });
+
+    useStore.getState().unassignStudent(student.id);
+
+    expect(useStore.getState().assignments['seatA']).toBeUndefined();
+    expect(useStore.getState().students[0].lockedSeatId).toBeNull();
+  });
+
+  it('assignStudent to a different seat clears a stale lock', () => {
+    useStore.getState().addStudent('Alice');
+    const student = useStore.getState().students[0];
+    useStore.setState({
+      assignments: { seatA: student.id },
+      students: [{ ...student, lockedSeatId: 'seatA' }]
+    });
+
+    useStore.getState().assignStudent(student.id, 'seatB');
+
+    expect(useStore.getState().assignments['seatB']).toBe(student.id);
+    expect(useStore.getState().students[0].lockedSeatId).toBeNull();
+  });
+
+  it('assignStudent to the same locked seat keeps the lock', () => {
+    useStore.getState().addStudent('Alice');
+    const student = useStore.getState().students[0];
+    useStore.setState({
+      assignments: { seatA: student.id },
+      students: [{ ...student, lockedSeatId: 'seatA' }]
+    });
+
+    useStore.getState().assignStudent(student.id, 'seatA');
+
+    expect(useStore.getState().students[0].lockedSeatId).toBe('seatA');
+  });
+
+  it('removeFurniture clears the lock for a student locked to a seat on that furniture', () => {
+    useStore.getState().addFurniture('table-single', 0, 0);
+    const furnitureId = useStore.getState().furniture[0].id;
+    const seatId = furnitureId; // table-single's own id is its seat id
+    useStore.getState().addStudent('Alice');
+    const student = useStore.getState().students[0];
+    useStore.setState({
+      assignments: { [seatId]: student.id },
+      students: [{ ...student, lockedSeatId: seatId }]
+    });
+
+    useStore.getState().removeFurniture(furnitureId);
+
+    expect(useStore.getState().students[0].lockedSeatId).toBeNull();
+  });
+});

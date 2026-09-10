@@ -20,7 +20,8 @@ export default function RoomCanvas({ stageRef }: RoomCanvasProps) {
     width, height, furniture, updateFurniture,
     assignments, students, unassignStudent, removeFurniture, relationships,
     interactionMode, handleRelationClick, relationSelection, language,
-    pendingAssignment, setPendingAssignment, assignPendingStudentToSeat
+    pendingAssignment, setPendingAssignment, assignPendingStudentToSeat,
+    lockStudentToSeat, unlockStudent
   } = useStore();
 
   const t = TRANSLATIONS[language];
@@ -227,11 +228,20 @@ export default function RoomCanvas({ stageRef }: RoomCanvasProps) {
 
     // If specific seat clicked
     if (contextMenu.seatId) {
-        const student = getStudentForSeat(contextMenu.seatId);
+        const seatId = contextMenu.seatId;
+        const student = getStudentForSeat(seatId);
         if (student) {
              options.push({
                 label: `${t.canvas.context.unassign} ${student.name}`,
                 action: () => unassignStudent(student.id)
+             });
+
+             const isStudentLocked = student.lockedSeatId === seatId;
+             options.push({
+                label: isStudentLocked ? t.canvas.context.unlockStudent : t.canvas.context.lockStudent,
+                action: () => isStudentLocked
+                    ? unlockStudent(student.id)
+                    : lockStudentToSeat(student.id, seatId)
              });
         }
     }
@@ -480,11 +490,12 @@ function FurnitureItem({
             const studentId = assignments[seatId];
             const student = students.find(s => s.id === studentId);
             const isOccupied = !!student;
-            
+            const isStudentLocked = !!student && student.lockedSeatId === seatId;
+
             const isSelected = student && relationSelection?.type === 'single' && relationSelection.id === student.id;
-            
+
             // Highlight color based on tool mode
-            let strokeColor = isOccupied ? '#3B82F6' : (isLocked ? '#EF4444' : '#E2E8F0');
+            let strokeColor = isStudentLocked ? '#F59E0B' : (isOccupied ? '#3B82F6' : (isLocked ? '#EF4444' : '#E2E8F0'));
             let strokeWidth = isOccupied ? 2 : 1;
             
             if (isSelected) {
@@ -564,13 +575,29 @@ function FurnitureItem({
                             ellipsis={true}
                             wrap="none"
                           />
-                          {student && (
+                          {student && !isStudentLocked && (
                             <Circle
                                 x={seatPixelW - 24}
                                 y={seatPixelH - 24}
                                 radius={4}
                                 fill="#22C55E"
                             />
+                          )}
+                          {isStudentLocked && (
+                            <>
+                                <Circle
+                                    x={seatPixelW - 26}
+                                    y={seatPixelH - 26}
+                                    radius={7}
+                                    fill="#F59E0B"
+                                />
+                                <Text
+                                    text="🔒"
+                                    x={seatPixelW - 32}
+                                    y={seatPixelH - 32}
+                                    fontSize={9}
+                                />
+                            </>
                           )}
                            {!student && !isLocked && (
                                 <Group y={28}>

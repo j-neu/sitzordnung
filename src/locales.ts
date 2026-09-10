@@ -103,6 +103,8 @@ export const TRANSLATIONS = {
         rotate: "Rotate 90°",
         lock: "Lock Furniture",
         unlock: "Unlock Furniture",
+        lockStudent: "Lock Student",
+        unlockStudent: "Unlock Student",
         delete: "Delete Furniture"
       }
     }
@@ -209,6 +211,8 @@ export const TRANSLATIONS = {
         rotate: "Drehen 90°",
         lock: "Möbel sperren",
         unlock: "Möbel entsperren",
+        lockStudent: "Schüler sperren",
+        unlockStudent: "Schüler entsperren",
         delete: "Möbel löschen"
       }
     }

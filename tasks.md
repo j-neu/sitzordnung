@@ -123,3 +123,18 @@
   - Test: renders `t.appTitle`; clicking DE/EN calls `setLanguage` and switches displayed title.
 - [x] Update `Layout.tsx` mobile branch to drop the removed `title` prop.
   - Test: covered by `Layout.test.tsx` + `MobileTopBar` test above.
+
+## Phase 11: Lock a Student to Their Seat
+
+- [x] Add `lockStudentToSeat`/`unlockStudent` actions to `useStore.ts`; update `unassignStudent`, `assignStudent`, and `removeFurniture` to keep `lockedSeatId` consistent.
+  - Test: locking sets `lockedSeatId`; unlocking clears it; `unassignStudent` on a locked student clears the lock; `assignStudent` moving a locked student to a different seat clears the lock (same seat keeps it); `removeFurniture` clears the lock for a student locked to a seat on that furniture.
+- [x] Extract simulated-annealing algorithm from `solver.worker.ts` into pure `src/utils/solver.ts::runOptimization`, accepting `lockedSeatIds` and excluding them from swap candidates; rewire worker as a thin wrapper.
+  - Test: a locked student's seat never changes across an optimization run even when a relationship would otherwise pull them elsewhere; a control run with no locks still produces changes.
+- [x] `startOptimization` in `useStore.ts` computes and passes `lockedSeatIds` in the worker payload.
+  - Test: covered by the `solver.test.ts` unit test (same code path).
+- [x] Add `lockStudent`/`unlockStudent` keys to `en`/`de` under `canvas.context` in `locales.ts`.
+  - Test: manual — visible in context menu.
+- [x] Add Lock/Unlock Student context-menu option in `RoomCanvas.tsx`'s `getContextMenuOptions`.
+  - Test: manual — right-click occupied seat shows "Lock Student"; after locking shows "Unlock Student"; empty seat shows neither.
+- [x] Add amber locked-seat styling (stroke color, seat indicator + lock glyph) in `FurnitureItem`.
+  - Test: manual — locked seat visually distinct from occupied (blue) and furniture-locked (red) seats.
